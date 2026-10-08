@@ -53,3 +53,9 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# Configuracoes locais do VS Code
+.vscode/
+
+# Instalacao local do Emscripten
+emsdk/
