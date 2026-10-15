@@ -20,3 +20,21 @@ Foi verificado:
 
 Esses testes serão implementados após a integração
 dos módulos do grupo.
+
+## Testes do módulo de resultado — 15/10/2026
+
+Os testes isolados de resultado.c foram executados com
+Emscripten no navegador e passaram.
+
+Cenários verificados:
+- Partida em andamento.
+- Vitória do jogador 1.
+- Vitória do jogador 2.
+- Empate.
+- Nenhum par encontrado.
+- Todos os pares encontrados pelo mesmo jogador.
+- Dados inválidos.
+
+Resultado: todas as verificações executadas passaram.
+
+Os testes de integração com os demais módulos permanecem pendentes.
