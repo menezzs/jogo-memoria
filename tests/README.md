@@ -38,3 +38,21 @@ Cenários verificados:
 Resultado: todas as verificações executadas passaram.
 
 Os testes de integração com os demais módulos permanecem pendentes.
+
+## Integração RF02, RF03 e RF05 — 15/10/2026
+
+Teste compilado com Emscripten e executado no navegador.
+
+Resultado: todas as verificações executadas passaram.
+
+Foram verificados:
+- Validação de cartas e pares.
+- Manutenção da vez no acerto e troca no erro.
+- Encerramento após os 8 pares.
+- Vitória dos dois jogadores e empate.
+- Bloqueio de seleções após o encerramento.
+- Reinicialização da partida.
+
+O RF04 ainda não participou do teste.
+Os totais de pares foram atualizados pelo código de teste.
+A interface do jogo ainda precisa ser conectada aos módulos.
