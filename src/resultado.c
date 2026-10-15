@@ -16,7 +16,6 @@ Retorna:
 EXPORTAR
 int verificarFimJogo(int paresJogador1, int paresJogador2)
 {
-    /* Cada jogador pode encontrar de 0 a 8 pares. */
     if (paresJogador1 < 0 || paresJogador1 > TOTAL_PARES ||
         paresJogador2 < 0 || paresJogador2 > TOTAL_PARES) {
         return -1;
@@ -24,7 +23,6 @@ int verificarFimJogo(int paresJogador1, int paresJogador2)
 
     int totalEncontrado = paresJogador1 + paresJogador2;
 
-    /* O tabuleiro possui apenas 8 pares. */
     if (totalEncontrado > TOTAL_PARES) {
         return -1;
     }
