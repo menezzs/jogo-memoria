@@ -20,11 +20,12 @@ digitais e ganhem confiança no uso da tecnologia.
 
 ## Funcionamento previsto
 
-- Partida individual.
+- Partida com 2 jogadores, alternando as jogadas no mesmo tabuleiro.
 - Tabuleiro com 16 cartas formando 8 pares.
 - Seleção de cartas e identificação de pares.
-- Registro de pontuação e tentativas.
-- Apresentação do resultado ao concluir a partida.
+- Registro de pontuação e tentativas de cada jogador.
+- Encerramento quando todos os pares forem encontrados.
+- Vence quem encontrar mais pares. Se os dois encontrarem a mesma quantidade, a partida termina empatada.
 - Execução diretamente no navegador.
 
 ## Desenvolvimento em grupo
