@@ -4,7 +4,7 @@ cd /d "%~dp0"
 
 if not exist docs mkdir docs
 
-call emcc src/projetocertificador.c -O2 -sEXPORTED_RUNTIME_METHODS=ccall --shell-file web/shell.html -o docs/projetoweb.html
+call emcc src/projetocertificador.c src/resultado.c -O2 -sEXPORTED_RUNTIME_METHODS=ccall --shell-file web/shell.html -o docs/projetoweb.html
 
 if errorlevel 1 (
     echo Erro na compilacao.
