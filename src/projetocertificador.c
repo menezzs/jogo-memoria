@@ -57,8 +57,6 @@ int EstadoDaCarta(int posicao)
         (int)jogo.tabuleiro.cartas[posicao].estado : -1;
 }
 
-/* O resultado da segunda carta atualiza RF03 e RF04 exatamente uma vez.
-   O ultimo jogador identifica o autor mesmo quando o erro ja passou a vez. */
 static int registrar_resultado(ResultadoJogada resultado)
 {
     ProcessarResultadoJogada(resultado);
@@ -93,5 +91,3 @@ int OcultarErro(void)
 {
     return iniciada ? rf02_ocultar_erro(&jogo) : 0;
 }
-/* main fica somente em console.c ou no arquivo de testes.
-   Para web, compilar com --no-entry e sem console.c. */
