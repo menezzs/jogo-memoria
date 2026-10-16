@@ -1,0 +1,2292 @@
+diff --git a/.gitignore b/.gitignore
+index 1c0a5b8..acbe62b 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -59,3 +59,6 @@ dkms.conf
+ 
+ # Instalacao local do Emscripten
+ emsdk/
++
++/tmp/
++/bin/
+diff --git a/README.md b/README.md
+index 4c7e499..2e9520f 100644
+--- a/README.md
++++ b/README.md
+@@ -1,35 +1,48 @@
+-# Jogo da Memória — TEDI
++# Jogo da Memória para Idosos
+ 
+-Projeto desenvolvido na disciplina Certificadora de Competência I
+-do curso de Engenharia de Computação da UTFPR — Cornélio Procópio.
++Projeto da disciplina Certificadora de Competência I, Engenharia de Computação, UTFPR Cornélio Procópio, para apoiar atividades de inclusão digital do TEDI.
+ 
+-## Contexto
++## Funcionamento
+ 
+-O TEDI — Tecnologia e Educação Digital para a Terceira Idade —
+-promove a inclusão e a alfabetização digital da comunidade idosa
+-por meio de oficinas e atividades práticas.
++Dois jogadores compartilham um tabuleiro 4 por 4, com 16 cartas e 8 pares. Um acerto soma um ponto e mantém a vez. Um erro passa a vez após ocultar as cartas. Apenas uma tentativa completa é registrada por vez. O oitavo par encerra a partida. Vence quem tem mais pares; 4 a 4 é empate. Nova partida reinicia todos os dados.
+ 
+-## Objetivo do sistema
++## Executar a versão web já compilada
+ 
+-Desenvolver um jogo da memória para apoiar a Oficina de Jogos
+-Digitais do TEDI.
++Na raiz do projeto:
+ 
+-A proposta é oferecer uma atividade simples e acessível para
+-que os participantes pratiquem a interação com interfaces
+-digitais e ganhem confiança no uso da tecnologia.
++```sh
++python -m http.server 8000 --directory docs
++```
+ 
+-## Funcionamento previsto
++Abra http://localhost:8000. No Windows, o comando pode ser executado com py em vez de python se esse for o nome disponível na instalação.
+ 
+-- Partida com 2 jogadores, alternando as jogadas no mesmo tabuleiro.
+-- Tabuleiro com 16 cartas formando 8 pares.
+-- Seleção de cartas e identificação de pares.
+-- Registro de pontuação e tentativas de cada jogador.
+-- Encerramento quando todos os pares forem encontrados.
+-- Vence quem encontrar mais pares. Se os dois encontrarem a mesma quantidade, a partida termina empatada.
+-- Execução diretamente no navegador.
++## Executar em C no terminal
+ 
+-## Desenvolvimento em grupo
++Com GCC disponível, execute build_console.bat no Windows ou sh build_console.sh no Linux e macOS. Escolha duas posições de 1 a 16. No erro, pressione Enter para ocultar as cartas e passar a vez.
+ 
+-Além da implementação técnica, o projeto envolve planejamento,
+-divisão de tarefas, comunicação e resolução de problemas
+-entre os integrantes.
++## Recompilar a versão web
++
++Ative o ambiente do Emscripten e execute build.bat no Windows ou sh build.sh no Linux e macOS. A compilação foi validada com Emscripten 6.0.11. Os arquivos gerados ficam em docs. Edite os fontes em src e web, depois compile novamente.
++
++## Módulos
++
++| Requisito | Arquivo | Responsabilidade |
++| --- | --- | --- |
++| RF01 | src/projetocertificador.c | Tabuleiro, embaralhamento e integração |
++| RF02 | src/rf02.c e src/rf02.h | Seleção de cartas, comparação e ocultação |
++| RF03 | src/turnos.c e src/turnos.h | Vez atual e autor da última tentativa |
++| RF04 | src/pontuacao.c e src/pontuacao.h | Pontos, tentativas e total de pares |
++| RF05 | src/resultado.c e src/resultado.h | Encerramento e resultado |
++| Console | src/console.c | Interface de terminal para demonstrar o C |
++
++## Validação
++
++Os testes nativos passaram com verificações de memória e de comportamento indefinido. A compilação WebAssembly e o teste com DOM simulado passaram. Também passaram testes em Chromium real para carregamento, pontuação, turnos, vitória, empate, reinício e tela de celular. Consulte tests/README.md.
++
++## Entrega e integração
++
++Esta versão consolidada foi preparada para revisão da equipe sobre o commit base 177550696bd75cc88afa7634390f48cd1c2cbd1c. Os módulos de pontuação e resultado foram incluídos para completar os cinco requisitos nesta cópia; compare com eventuais arquivos particulares dos responsáveis antes de conciliá-los. Nenhuma alteração foi enviada ao repositório remoto nesta preparação.
++
++Relatório coletivo: https://docs.google.com/document/d/1OG4QsGdN56zUUXdb3ZEBB1Rv-IkP9FNglgoW3n0h56c/edit
++
++A entrega da avaliação está indicada no Moodle para 16/10/2026 às 18h40, com PDF e apresentação presencial.
+diff --git a/build.bat b/build.bat
+index bf4d836..9609f8f 100644
+--- a/build.bat
++++ b/build.bat
+@@ -4,7 +4,7 @@ cd /d "%~dp0"
+ 
+ if not exist docs mkdir docs
+ 
+-call emcc src/projetocertificador.c src/resultado.c -O2 -sEXPORTED_RUNTIME_METHODS=ccall --shell-file web/shell.html -o docs/projetoweb.html
++call emcc src/projetocertificador.c src/rf02.c src/turnos.c src/pontuacao.c src/resultado.c -std=c11 -O2 -sEXPORTED_RUNTIME_METHODS=ccall -sNO_EXIT_RUNTIME=1 --shell-file web/shell.html -o docs/projetoweb.html
+ 
+ if errorlevel 1 (
+     echo Erro na compilacao.
+diff --git a/build.sh b/build.sh
+new file mode 100644
+index 0000000..621832a
+--- /dev/null
++++ b/build.sh
+@@ -0,0 +1,9 @@
++#!/bin/sh
++set -eu
++cd "$(dirname "$0")"
++mkdir -p docs
++emcc src/projetocertificador.c src/rf02.c src/turnos.c src/pontuacao.c src/resultado.c -std=c11 -O2 -sEXPORTED_RUNTIME_METHODS=ccall -sNO_EXIT_RUNTIME=1 --shell-file web/shell.html -o docs/projetoweb.html
++mv docs/projetoweb.html docs/index.html
++cp web/jogo.js docs/jogo.js
++: > docs/.nojekyll
++printf '%s\n' 'Compilacao concluida!'
+diff --git a/build_console.bat b/build_console.bat
+new file mode 100644
+index 0000000..f061715
+--- /dev/null
++++ b/build_console.bat
+@@ -0,0 +1,7 @@
++@echo off
++setlocal
++cd /d "%~dp0"
++if not exist bin mkdir bin
++gcc -std=c11 -Wall -Wextra -Werror -pedantic -DRF02_SEM_MAIN src/projetocertificador.c src/rf02.c src/turnos.c src/pontuacao.c src/resultado.c src/console.c -o bin/jogo_memoria.exe
++if errorlevel 1 exit /b 1
++bin\jogo_memoria.exe
+diff --git a/build_console.sh b/build_console.sh
+new file mode 100644
+index 0000000..3f9e4a9
+--- /dev/null
++++ b/build_console.sh
+@@ -0,0 +1,6 @@
++#!/bin/sh
++set -eu
++cd "$(dirname "$0")"
++mkdir -p bin
++gcc -std=c11 -Wall -Wextra -Werror -pedantic -DRF02_SEM_MAIN src/projetocertificador.c src/rf02.c src/turnos.c src/pontuacao.c src/resultado.c src/console.c -o bin/jogo_memoria
++./bin/jogo_memoria
+diff --git a/docs/index.html b/docs/index.html
+index 4cd70f2..a1457cd 100644
+--- a/docs/index.html
++++ b/docs/index.html
+@@ -1 +1 @@
+-<!doctypehtml><html lang=en-us><head><meta charset=utf-8><meta content="text/html; charset=utf-8"http-equiv=Content-Type><title>Emscripten-Generated Code</title><style>body{font-family:arial;margin:0;padding:none}.emscripten{padding-right:0;margin-left:auto;margin-right:auto;display:block}div.emscripten{text-align:center}div.emscripten_border{border:1px solid #000}canvas.emscripten{border:0 none;background-color:#000}#emscripten_logo{display:inline-block;margin:0;padding:6px;width:265px}.spinner{height:30px;width:30px;margin:0;margin-top:20px;margin-left:20px;display:inline-block;vertical-align:top;-webkit-animation:rotation .8s linear infinite;-moz-animation:rotation .8s linear infinite;-o-animation:rotation .8s linear infinite;animation:rotation .8s linear infinite;border-left:5px solid #ebebeb;border-right:5px solid #ebebeb;border-bottom:5px solid #ebebeb;border-top:5px solid #787878;border-radius:100%;background-color:#bdd72e}@-webkit-keyframes rotation{from{-webkit-transform:rotate(0)}to{-webkit-transform:rotate(360deg)}}@-moz-keyframes rotation{from{-moz-transform:rotate(0)}to{-moz-transform:rotate(360deg)}}@-o-keyframes rotation{from{-o-transform:rotate(0)}to{-o-transform:rotate(360deg)}}@keyframes rotation{from{transform:rotate(0)}to{transform:rotate(360deg)}}#status{display:inline-block;vertical-align:top;margin-top:30px;margin-left:20px;font-weight:700;color:#787878}#progress{height:20px;width:300px}#controls{display:inline-block;float:right;vertical-align:top;margin-top:30px;margin-right:20px}#output{width:100%;height:200px;margin:0 auto;margin-top:10px;border-left:0;border-right:0px;padding-left:0;padding-right:0;display:block;background-color:#000;color:#fff;font-family:'Lucida Console',Monaco,monospace;outline:0}#tabuleiro{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);gap:10px}.emscripten_border{display:none}#output{display:none}.spinner{display:none}#status{display:none}.carta{width:100px;height:100px;background-color:#4a90d9;border:2px solid #2c3e50;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff;cursor:pointer;user-select:none}#btnEmbaralhar{display:block;margin:20px;padding:10px 20px;font-size:16px;cursor:pointer}</style></head><body><a href=http://emscripten.org><img id=emscripten_logo src=data:image/png;base64,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></a><div class=spinner id=spinner></div><div class=emscripten id=status>Downloading...</div><span id=controls><span><input type=checkbox id=resize>Resize canvas</span> <span><input type=checkbox id=pointerLock checked>Lock/hide mouse pointer    </span><span><input type=button onclick='Module.requestFullscreen(document.getElementById("pointerLock").checked,document.getElementById("resize").checked)'value=Fullscreen></span></span><div class=emscripten><progress hidden id=progress max=100 value=0></progress></div><div class=emscripten_border><canvas class=emscripten id=canvas oncontextmenu=event.preventDefault() tabindex=-1></canvas></div><button id=btnEmbaralhar>Embaralhar</button><div id=tabuleiro></div><textarea id=output rows=8></textarea><script src=jogo.js></script><script src=projetoweb.js async></script></body></html>
+\ No newline at end of file
++<!doctypehtml><html lang=pt-BR><head><meta charset=utf-8><meta content="width=device-width,initial-scale=1"name=viewport><title>Jogo da memória</title><style>*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;color:#202020;background:#f5f5f3}main{max-width:620px;margin:36px auto;padding:0 20px}h1{font-size:30px;margin-bottom:8px}p{font-size:18px;line-height:1.5}#mensagem{min-height:54px}#jogadorAtual{font-size:22px;font-weight:700}#placar{width:100%;border-collapse:collapse;font-size:18px;margin-top:18px}#placar td,#placar th{padding:8px;text-align:left;border-bottom:1px solid #999}#tabuleiro{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:20px 0}.carta{min-width:0;min-height:92px;padding:8px 3px;border:2px solid #3d3d3d;border-radius:8px;background:#fff;font:bold 18px Arial,sans-serif;color:#202020;cursor:pointer;overflow-wrap:anywhere}.carta.visivel{background:#f5e9c7}.carta.encontrada{background:#dcebdc;border-color:#32643c}.carta:disabled{color:#202020;cursor:default;opacity:1}button:focus-visible{outline:3px solid #803f10;outline-offset:3px}#btnEmbaralhar{padding:12px 18px;border:2px solid #333;border-radius:6px;background:#fff;color:#202020;font-size:18px;cursor:pointer}#btnEmbaralhar:disabled{cursor:wait}@media (max-width:420px){.carta{min-height:74px;font-size:15px}}</style></head><body><main><h1>Jogo da memória</h1><p>Encontre os pares de nomes.</p><button disabled id=btnEmbaralhar type=button>Nova partida</button><p aria-live=polite id=jogadorAtual>Vez do jogador 1</p><table aria-label="Pontuação e tentativas dos jogadores"id=placar><thead><tr><th>Jogador</th><th>Pares</th><th>Tentativas</th></tr></thead><tbody><tr><th scope=row>Jogador 1</th><td id=pontos1>0</td><td id=tentativas1>0</td></tr><tr><th scope=row>Jogador 2</th><td id=pontos2>0</td><td id=tentativas2>0</td></tr></tbody></table><p>Total de tentativas: <span id=totalTentativas>0</span></p><p aria-live=polite id=mensagem role=status>Carregando o jogo...</p><div aria-label="Tabuleiro de quatro linhas e quatro colunas"id=tabuleiro></div><noscript>Ative o JavaScript para executar o jogo.</noscript></main><script src=jogo.js></script><script src=projetoweb.js async></script></body></html>
+\ No newline at end of file
+diff --git a/docs/jogo.js b/docs/jogo.js
+index f7c4944..3be6e39 100644
+--- a/docs/jogo.js
++++ b/docs/jogo.js
+@@ -1,28 +1,130 @@
+-function criarTabuleiro() {
+-    Module.ccall("Embaralhar", null, [], []);
+-    const tabuleiro = document.getElementById("tabuleiro");
+-    tabuleiro.innerHTML = "";
+-
+-    for (let i = 0; i < 16; i++) {
+-        const carta = document.createElement("div");
+-        carta.className = "carta";
+-        const nome = Module.ccall("ReturnCart", "string", ["number"], [i]);
+-        carta.dataset.nome = nome;
+-        carta.textContent = "?";
+-        carta.addEventListener("click", () => {
+-            carta.textContent = carta.dataset.nome;
+-        });
+-        tabuleiro.appendChild(carta);
+-    }
+-}
+-
+-var Module = {
+-    onRuntimeInitialized: () => {
+-        criarTabuleiro();        
+-    }
+-};
+-
+-const embaralhar = document.getElementById("btnEmbaralhar");
+-embaralhar.addEventListener("click", () => {
+-    criarTabuleiro();
+-});
+\ No newline at end of file
++const RF02 = Object.freeze({
++    INVALIDA: -1,
++    PRIMEIRA: 0,
++    ACERTO: 1,
++    ERRO: 2,
++    BLOQUEADA: 3
++});
++
++let temporizadorErro = null;
++let motorPronto = false;
++
++function chamarC(nome, argumentos = []) {
++    return Module.ccall(nome, "number", argumentos.map(() => "number"), argumentos);
++}
++
++function informar(texto) {
++    document.getElementById("mensagem").textContent = texto;
++}
++
++function atualizarTabuleiro() {
++    const bloqueado = chamarC("JogadaBloqueada") === 1;
++    const encerrada = chamarC("PartidaEncerrada") === 1;
++    document.getElementById("jogadorAtual").textContent = encerrada ?
++        "Partida encerrada" : `Vez do jogador ${chamarC("ObterJogadorAtual")}`;
++    for (let jogador = 1; jogador <= 2; jogador++) {
++        document.getElementById(`pontos${jogador}`).textContent = chamarC("ObterPontos", [jogador]);
++        document.getElementById(`tentativas${jogador}`).textContent = chamarC("ObterTentativas", [jogador]);
++    }
++    document.getElementById("totalTentativas").textContent = chamarC("ObterTotalTentativas");
++    document.querySelectorAll("#tabuleiro .carta").forEach((carta, posicao) => {
++        const estado = chamarC("EstadoDaCarta", [posicao]);
++        const simbolo = estado === 0 ? "?" :
++            Module.ccall("ReturnCart", "string", ["number"], [posicao]);
++        carta.textContent = simbolo;
++        carta.disabled = encerrada || bloqueado || estado !== 0;
++        carta.classList.toggle("encontrada", estado === 2);
++        carta.classList.toggle("visivel", estado === 1);
++        carta.setAttribute("aria-label", estado === 0 ?
++            `Carta oculta na linha ${Math.floor(posicao / 4) + 1}, coluna ${posicao % 4 + 1}` :
++            `${simbolo}${estado === 2 ? ", par encontrado" : ""}`);
++    });
++}
++
++function informarResultadoFinal() {
++    const vencedor = chamarC("ObterVencedor");
++    informar(vencedor === 0 ? "Empate! Cada jogador encontrou 4 pares." :
++        `Jogador ${vencedor} venceu com ${chamarC("ObterPontos", [vencedor])} pares!`);
++}
++
++function avisarJogada(resultado, primeira, segunda) {
++    document.dispatchEvent(new CustomEvent("rf02:jogadaConcluida", {
++        detail: {
++            resultado,
++            primeira,
++            segunda,
++            jogador: chamarC("ObterJogadorDaUltimaJogada"),
++            proximoJogador: chamarC("ObterJogadorAtual")
++        }
++    }));
++}
++
++function escolherCarta(posicao) {
++    if (!motorPronto) {
++        return;
++    }
++
++    const primeira = chamarC("ObterPrimeiraCarta");
++    const resultado = chamarC("EscolherCarta", [posicao]);
++    atualizarTabuleiro();
++
++    if (resultado === RF02.PRIMEIRA) {
++        informar("Escolha a segunda carta.");
++    } else if (resultado === RF02.ACERTO) {
++        if (chamarC("PartidaEncerrada")) {
++            informarResultadoFinal();
++        } else {
++            informar("Par encontrado. Escolha outra carta.");
++        }
++        avisarJogada(resultado, primeira, posicao);
++    } else if (resultado === RF02.ERRO) {
++        informar("As cartas são diferentes. Aguarde para tentar novamente.");
++        temporizadorErro = setTimeout(() => {
++            temporizadorErro = null;
++            chamarC("OcultarErro");
++            atualizarTabuleiro();
++            informar("Cartas ocultadas. Escolha uma carta.");
++            avisarJogada(resultado, primeira, posicao);
++        }, 1200);
++    } else if (resultado === RF02.INVALIDA) {
++        informar("Selecione uma carta oculta diferente da primeira.");
++    }
++}
++
++function criarTabuleiro() {
++    if (!motorPronto) {
++        return;
++    }
++
++    if (temporizadorErro !== null) {
++        clearTimeout(temporizadorErro);
++        temporizadorErro = null;
++    }
++
++    Module.ccall("Embaralhar", null, [], []);
++    const tabuleiro = document.getElementById("tabuleiro");
++    tabuleiro.innerHTML = "";
++
++    for (let i = 0; i < 16; i++) {
++        const carta = document.createElement("button");
++        carta.type = "button";
++        carta.className = "carta";
++        carta.addEventListener("click", () => escolherCarta(i));
++        tabuleiro.appendChild(carta);
++    }
++
++    atualizarTabuleiro();
++    informar("Escolha duas cartas para procurar um par.");
++    document.dispatchEvent(new CustomEvent("rf02:reinicio"));
++}
++
++var Module = {
++    onRuntimeInitialized: () => {
++        motorPronto = true;
++        document.getElementById("btnEmbaralhar").disabled = false;
++        criarTabuleiro();
++    },
++    onAbort: () => informar("Não foi possível carregar o jogo. Confira a compilação e o servidor local.")
++};
++
++document.getElementById("btnEmbaralhar").addEventListener("click", criarTabuleiro);
+diff --git a/docs/projetoweb.js b/docs/projetoweb.js
+index 26bb262..ef6b0e2 100644
+--- a/docs/projetoweb.js
++++ b/docs/projetoweb.js
+@@ -1 +1 @@
+-var Module=typeof Module!="undefined"?Module:{};var ENVIRONMENT_IS_WEB=!!globalThis.window;var ENVIRONMENT_IS_WORKER=!!globalThis.WorkerGlobalScope;var ENVIRONMENT_IS_NODE=globalThis.process?.versions?.node&&globalThis.process?.type!="renderer";var programArgs=[];var thisProgram="./this.program";var quit_=(status,toThrow)=>{throw toThrow};var _scriptName=globalThis.document?.currentScript?.src;if(typeof __filename!="undefined"){_scriptName=__filename}else if(ENVIRONMENT_IS_WORKER){_scriptName=self.location.href}var scriptDirectory="";function locateFile(path){if(Module["locateFile"]){return Module["locateFile"](path,scriptDirectory)}return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_NODE){var fs=require("node:fs");scriptDirectory=__dirname+"/";readBinary=filename=>{filename=isFileURI(filename)?new URL(filename):filename;var ret=fs.readFileSync(filename);return ret};readAsync=async(filename,binary=true)=>{filename=isFileURI(filename)?new URL(filename):filename;var ret=fs.readFileSync(filename,binary?undefined:"utf8");return ret};if(process.argv.length>1){thisProgram=process.argv[1].replace(/\\/g,"/")}programArgs=process.argv.slice(2);if(typeof module!="undefined"){module["exports"]=Module}quit_=(status,toThrow)=>{process.exitCode=status;throw toThrow}}else if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}{if(ENVIRONMENT_IS_WORKER){readBinary=url=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,false);xhr.responseType="arraybuffer";xhr.send(null);return new Uint8Array(xhr.response)}}readAsync=async url=>{if(isFileURI(url)){return new Promise((resolve,reject)=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,true);xhr.responseType="arraybuffer";xhr.onload=()=>{if(xhr.status==200||xhr.status==0&&xhr.response){resolve(xhr.response);return}reject(xhr.status)};xhr.onerror=reject;xhr.send(null)})}var response=await fetch(url,{credentials:"same-origin"});if(response.ok){return response.arrayBuffer()}throw new Error(response.status+" : "+response.url)}}}else{}var out=console.log.bind(console);var err=console.error.bind(console);var wasmBinary;var ABORT=false;var EXITSTATUS;var isFileURI=filename=>filename.startsWith("file://");class EmscriptenEH{}class EmscriptenSjLj extends EmscriptenEH{}var runtimeInitialized=false;function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAPU8=new Uint8Array(b)}function preRun(){var preRun=Module["preRun"];if(preRun){if(typeof preRun=="function")preRun=[preRun];onPreRuns.push(...preRun)}callRuntimeCallbacks(onPreRuns)}function initRuntime(){runtimeInitialized=true;wasmExports["__wasm_call_ctors"]()}function postRun(){var postRun=Module["postRun"];if(postRun){if(typeof postRun=="function")postRun=[postRun];onPostRuns.push(...postRun)}callRuntimeCallbacks(onPostRuns)}function abort(what){Module["onAbort"]?.(what);what=`Aborted(${what})`;err(what);ABORT=true;what+=". Build with -sASSERTIONS for more info.";var e=new WebAssembly.RuntimeError(what);throw e}var wasmBinaryFile;function findWasmBinary(){return locateFile("projetoweb.wasm")}function getBinarySync(file){if(readBinary){return readBinary(file)}throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(!wasmBinary){try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary&&!isFileURI(binaryFile)&&!ENVIRONMENT_IS_NODE){try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={env:wasmImports,wasi_snapshot_preview1:wasmImports};return imports}async function createWasm(){function receiveInstance(instance){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}function receiveInstantiationResult(result){return receiveInstance(result["instance"])}var info=getWasmImports();var instantiateWasm=Module["instantiateWasm"];if(instantiateWasm){return new Promise(resolve=>{instantiateWasm(info,inst=>resolve(receiveInstance(inst)))})}wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(wasmBinary,wasmBinaryFile,info);var exports=receiveInstantiationResult(result);return exports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var callRuntimeCallbacks=callbacks=>{while(callbacks.length>0){callbacks.shift()(Module)}};var onPostRuns=[];var onPreRuns=[];var noExitRuntime=true;var stackRestore=val=>__emscripten_stack_restore(val);var stackSave=()=>_emscripten_stack_get_current();var _emscripten_date_now=()=>Date.now();var runtimeKeepaliveCounter=0;var keepRuntimeAlive=()=>noExitRuntime||runtimeKeepaliveCounter>0;var _proc_exit=code=>{EXITSTATUS=code;if(!keepRuntimeAlive()){Module["onExit"]?.(code);ABORT=true}quit_(code,new ExitStatus(code))};var exitJS=(status,implicit)=>{EXITSTATUS=status;_proc_exit(status)};var handleException=e=>{if(e instanceof ExitStatus||e=="unwind"){return EXITSTATUS}quit_(1,e)};var getCFunc=ident=>{var func=Module["_"+ident];return func};var HEAP8;var writeArrayToMemory=(array,buffer)=>{HEAP8.set(array,buffer)};var lengthBytesUTF8=str=>{var len=0;for(var i=0;i<str.length;++i){var c=str.charCodeAt(i);if(c<=127){len++}else if(c<=2047){len+=2}else if(c>=55296&&c<=57343){len+=4;++i}else{len+=3}}return len};var stringToUTF8Array=(str,heap,outIdx,maxBytesToWrite)=>{if(!(maxBytesToWrite>0))return 0;var startIdx=outIdx;var endIdx=outIdx+maxBytesToWrite-1;for(var i=0;i<str.length;++i){var u=str.codePointAt(i);if(u<=127){if(outIdx>=endIdx)break;heap[outIdx++]=u}else if(u<=2047){if(outIdx+1>=endIdx)break;heap[outIdx++]=192|u>>6;heap[outIdx++]=128|u&63}else if(u<=65535){if(outIdx+2>=endIdx)break;heap[outIdx++]=224|u>>12;heap[outIdx++]=128|u>>6&63;heap[outIdx++]=128|u&63}else{if(outIdx+3>=endIdx)break;heap[outIdx++]=240|u>>18;heap[outIdx++]=128|u>>12&63;heap[outIdx++]=128|u>>6&63;heap[outIdx++]=128|u&63;i++}}heap[outIdx]=0;return outIdx-startIdx};var HEAPU8;var stringToUTF8=(str,outPtr,maxBytesToWrite)=>stringToUTF8Array(str,HEAPU8,outPtr,maxBytesToWrite);var stackAlloc=sz=>__emscripten_stack_alloc(sz);var stringToUTF8OnStack=str=>{var size=lengthBytesUTF8(str)+1;var ret=stackAlloc(size);stringToUTF8(str,ret,size);return ret};var UTF8Decoder=globalThis.TextDecoder&&new TextDecoder;var findStringEnd=(heapOrArray,idx,maxBytesToRead,ignoreNul)=>{var maxIdx=idx+maxBytesToRead;if(ignoreNul)return maxIdx;while(heapOrArray[idx]&&!(idx>=maxIdx))++idx;return idx};var UTF8ArrayToString=(heapOrArray,idx=0,maxBytesToRead,ignoreNul)=>{var endPtr=findStringEnd(heapOrArray,idx,maxBytesToRead,ignoreNul);if(endPtr-idx>16&&heapOrArray.buffer&&UTF8Decoder){return UTF8Decoder.decode(heapOrArray.subarray(idx,endPtr))}var str="";while(idx<endPtr){var u0=heapOrArray[idx++];if(!(u0&128)){str+=String.fromCharCode(u0);continue}var u1=heapOrArray[idx++]&63;if((u0&224)==192){str+=String.fromCharCode((u0&31)<<6|u1);continue}var u2=heapOrArray[idx++]&63;if((u0&240)==224){u0=(u0&15)<<12|u1<<6|u2}else{u0=(u0&7)<<18|u1<<12|u2<<6|heapOrArray[idx++]&63}if(u0<65536){str+=String.fromCharCode(u0)}else{var ch=u0-65536;str+=String.fromCharCode(55296|ch>>10,56320|ch&1023)}}return str};var UTF8ToString=(ptr,maxBytesToRead,ignoreNul)=>ptr?UTF8ArrayToString(HEAPU8,ptr,maxBytesToRead,ignoreNul):"";var ccall=(ident,returnType,argTypes,args,opts)=>{var toC={string:str=>{var ret=0;if(str!==null&&str!==undefined&&str!==0){ret=stringToUTF8OnStack(str)}return ret},array:arr=>{var ret=stackAlloc(arr.length);writeArrayToMemory(arr,ret);return ret}};function convertReturnValue(ret){if(returnType==="string"){return UTF8ToString(ret)}if(returnType==="boolean")return Boolean(ret);return ret}var func=getCFunc(ident);var cArgs=[];var stack=0;if(args){for(var i=0;i<args.length;i++){var converter=toC[argTypes[i]];if(converter){if(!stack)stack=stackSave();cArgs[i]=converter(args[i])}else{cArgs[i]=args[i]}}}var ret=func(...cArgs);function onDone(ret){if(stack)stackRestore(stack);return convertReturnValue(ret)}ret=onDone(ret);return ret};{if(Module["noExitRuntime"])noExitRuntime=Module["noExitRuntime"];if(Module["print"])out=Module["print"];if(Module["printErr"])err=Module["printErr"];if(Module["arguments"])programArgs=Module["arguments"];if(Module["thisProgram"])thisProgram=Module["thisProgram"];var preInit=Module["preInit"];if(preInit){if(typeof preInit=="function")Module["preInit"]=preInit=[preInit];while(preInit.length>0){preInit.shift()()}}}Module["ccall"]=ccall;var _Embaralhar,_ReturnCart,_main,_setThrew,__emscripten_stack_restore,__emscripten_stack_alloc,_emscripten_stack_get_current,memory,__indirect_function_table,wasmMemory;function assignWasmExports(wasmExports){_Embaralhar=Module["_Embaralhar"]=wasmExports["Embaralhar"];_ReturnCart=Module["_ReturnCart"]=wasmExports["ReturnCart"];_main=Module["_main"]=wasmExports["main"];_setThrew=wasmExports["setThrew"];__emscripten_stack_restore=wasmExports["_emscripten_stack_restore"];__emscripten_stack_alloc=wasmExports["_emscripten_stack_alloc"];_emscripten_stack_get_current=wasmExports["emscripten_stack_get_current"];memory=wasmMemory=wasmExports["memory"];__indirect_function_table=wasmExports["__indirect_function_table"]}var wasmImports={emscripten_date_now:_emscripten_date_now};function callMain(){var entryFunction=_main;var argc=0;var argv=0;try{var ret=entryFunction(argc,argv);exitJS(ret,true);return ret}catch(e){return handleException(e)}}async function run(){preRun();var setStatus=Module["setStatus"];if(setStatus){setStatus("Running...");await new Promise(resolve=>setTimeout(resolve,1));setTimeout(setStatus,1,"")}if(ABORT)return;initRuntime();Module["onRuntimeInitialized"]?.();var noInitialRun=Module["noInitialRun"]||false;if(!noInitialRun)callMain();postRun()}var wasmExports;createWasm().then(()=>run());
++var Module=typeof Module!="undefined"?Module:{};var ENVIRONMENT_IS_WEB=!!globalThis.window;var ENVIRONMENT_IS_WORKER=!!globalThis.WorkerGlobalScope;var ENVIRONMENT_IS_NODE=globalThis.process?.versions?.node&&globalThis.process?.type!="renderer";var programArgs=[];var thisProgram="./this.program";var quit_=(status,toThrow)=>{throw toThrow};var _scriptName=globalThis.document?.currentScript?.src;if(typeof __filename!="undefined"){_scriptName=__filename}else if(ENVIRONMENT_IS_WORKER){_scriptName=self.location.href}var scriptDirectory="";function locateFile(path){if(Module["locateFile"]){return Module["locateFile"](path,scriptDirectory)}return scriptDirectory+path}var readAsync,readBinary;if(ENVIRONMENT_IS_NODE){var fs=require("node:fs");scriptDirectory=__dirname+"/";readBinary=filename=>{filename=isFileURI(filename)?new URL(filename):filename;var ret=fs.readFileSync(filename);return ret};readAsync=async(filename,binary=true)=>{filename=isFileURI(filename)?new URL(filename):filename;var ret=fs.readFileSync(filename,binary?undefined:"utf8");return ret};if(process.argv.length>1){thisProgram=process.argv[1].replace(/\\/g,"/")}programArgs=process.argv.slice(2);if(typeof module!="undefined"){module["exports"]=Module}quit_=(status,toThrow)=>{process.exitCode=status;throw toThrow}}else if(ENVIRONMENT_IS_WEB||ENVIRONMENT_IS_WORKER){try{scriptDirectory=new URL(".",_scriptName).href}catch{}{if(ENVIRONMENT_IS_WORKER){readBinary=url=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,false);xhr.responseType="arraybuffer";xhr.send(null);return new Uint8Array(xhr.response)}}readAsync=async url=>{if(isFileURI(url)){return new Promise((resolve,reject)=>{var xhr=new XMLHttpRequest;xhr.open("GET",url,true);xhr.responseType="arraybuffer";xhr.onload=()=>{if(xhr.status==200||xhr.status==0&&xhr.response){resolve(xhr.response);return}reject(xhr.status)};xhr.onerror=reject;xhr.send(null)})}var response=await fetch(url,{credentials:"same-origin"});if(response.ok){return response.arrayBuffer()}throw new Error(response.status+" : "+response.url)}}}else{}var out=console.log.bind(console);var err=console.error.bind(console);var wasmBinary;var ABORT=false;var EXITSTATUS;var isFileURI=filename=>filename.startsWith("file://");class EmscriptenEH{}class EmscriptenSjLj extends EmscriptenEH{}var runtimeInitialized=false;function updateMemoryViews(){var b=wasmMemory.buffer;HEAP8=new Int8Array(b);HEAPU8=new Uint8Array(b);HEAPU32=new Uint32Array(b)}function preRun(){var preRun=Module["preRun"];if(preRun){if(typeof preRun=="function")preRun=[preRun];onPreRuns.push(...preRun)}callRuntimeCallbacks(onPreRuns)}function initRuntime(){runtimeInitialized=true;wasmExports["__wasm_call_ctors"]()}function postRun(){var postRun=Module["postRun"];if(postRun){if(typeof postRun=="function")postRun=[postRun];onPostRuns.push(...postRun)}callRuntimeCallbacks(onPostRuns)}function abort(what){Module["onAbort"]?.(what);what=`Aborted(${what})`;err(what);ABORT=true;what+=". Build with -sASSERTIONS for more info.";var e=new WebAssembly.RuntimeError(what);throw e}var wasmBinaryFile;function findWasmBinary(){return locateFile("projetoweb.wasm")}function getBinarySync(file){if(readBinary){return readBinary(file)}throw"both async and sync fetching of the wasm failed"}async function getWasmBinary(binaryFile){if(!wasmBinary){try{var response=await readAsync(binaryFile);return new Uint8Array(response)}catch{}}return getBinarySync(binaryFile)}async function instantiateArrayBuffer(binaryFile,imports){try{var binary=await getWasmBinary(binaryFile);var instance=await WebAssembly.instantiate(binary,imports);return instance}catch(reason){err(`failed to asynchronously prepare wasm: ${reason}`);abort(reason)}}async function instantiateAsync(binary,binaryFile,imports){if(!binary&&!isFileURI(binaryFile)&&!ENVIRONMENT_IS_NODE){try{var response=fetch(binaryFile,{credentials:"same-origin"});var instantiationResult=await WebAssembly.instantiateStreaming(response,imports);return instantiationResult}catch(reason){err(`wasm streaming compile failed: ${reason}`);err("falling back to ArrayBuffer instantiation")}}return instantiateArrayBuffer(binaryFile,imports)}function getWasmImports(){var imports={env:wasmImports,wasi_snapshot_preview1:wasmImports};return imports}async function createWasm(){function receiveInstance(instance){wasmExports=instance.exports;assignWasmExports(wasmExports);updateMemoryViews();return wasmExports}function receiveInstantiationResult(result){return receiveInstance(result["instance"])}var info=getWasmImports();var instantiateWasm=Module["instantiateWasm"];if(instantiateWasm){return new Promise(resolve=>{instantiateWasm(info,inst=>resolve(receiveInstance(inst)))})}wasmBinaryFile??=findWasmBinary();var result=await instantiateAsync(wasmBinary,wasmBinaryFile,info);var exports=receiveInstantiationResult(result);return exports}class ExitStatus{name="ExitStatus";constructor(status){this.message=`Program terminated with exit(${status})`;this.status=status}}var callRuntimeCallbacks=callbacks=>{while(callbacks.length>0){callbacks.shift()(Module)}};var onPostRuns=[];var onPreRuns=[];var noExitRuntime=true;var stackRestore=val=>__emscripten_stack_restore(val);var stackSave=()=>_emscripten_stack_get_current();var _emscripten_date_now=()=>Date.now();var abortOnCannotGrowMemory=requestedSize=>{abort("OOM")};var HEAPU8;var _emscripten_resize_heap=requestedSize=>{var oldSize=HEAPU8.length;requestedSize>>>=0;abortOnCannotGrowMemory(requestedSize)};var ENV={};var getExecutableName=()=>thisProgram;var getEnvStrings=()=>{if(!getEnvStrings.strings){var lang=(globalThis.navigator?.language??"C").replace("-","_")+".UTF-8";var env={USER:"web_user",LOGNAME:"web_user",PATH:"/",PWD:"/",HOME:"/home/web_user",LANG:lang,_:getExecutableName()};for(var x in ENV){if(ENV[x]===undefined)delete env[x];else env[x]=ENV[x]}var strings=[];for(var x in env){strings.push(`${x}=${env[x]}`)}getEnvStrings.strings=strings}return getEnvStrings.strings};var stringToUTF8Array=(str,heap,outIdx,maxBytesToWrite)=>{if(!(maxBytesToWrite>0))return 0;var startIdx=outIdx;var endIdx=outIdx+maxBytesToWrite-1;for(var i=0;i<str.length;++i){var u=str.codePointAt(i);if(u<=127){if(outIdx>=endIdx)break;heap[outIdx++]=u}else if(u<=2047){if(outIdx+1>=endIdx)break;heap[outIdx++]=192|u>>6;heap[outIdx++]=128|u&63}else if(u<=65535){if(outIdx+2>=endIdx)break;heap[outIdx++]=224|u>>12;heap[outIdx++]=128|u>>6&63;heap[outIdx++]=128|u&63}else{if(outIdx+3>=endIdx)break;heap[outIdx++]=240|u>>18;heap[outIdx++]=128|u>>12&63;heap[outIdx++]=128|u>>6&63;heap[outIdx++]=128|u&63;i++}}heap[outIdx]=0;return outIdx-startIdx};var stringToUTF8=(str,outPtr,maxBytesToWrite)=>stringToUTF8Array(str,HEAPU8,outPtr,maxBytesToWrite);var HEAPU32;var _environ_get=(__environ,environ_buf)=>{var bufSize=0;var envp=0;for(var string of getEnvStrings()){var ptr=environ_buf+bufSize;HEAPU32[__environ+envp>>2]=ptr;bufSize+=stringToUTF8(string,ptr,Infinity)+1;envp+=4}return 0};var lengthBytesUTF8=str=>{var len=0;for(var i=0;i<str.length;++i){var c=str.charCodeAt(i);if(c<=127){len++}else if(c<=2047){len+=2}else if(c>=55296&&c<=57343){len+=4;++i}else{len+=3}}return len};var _environ_sizes_get=(penviron_count,penviron_buf_size)=>{var strings=getEnvStrings();HEAPU32[penviron_count>>2]=strings.length;var bufSize=0;for(var string of strings){bufSize+=lengthBytesUTF8(string)+1}HEAPU32[penviron_buf_size>>2]=bufSize;return 0};var runtimeKeepaliveCounter=0;var keepRuntimeAlive=()=>noExitRuntime||runtimeKeepaliveCounter>0;var _proc_exit=code=>{EXITSTATUS=code;if(!keepRuntimeAlive()){Module["onExit"]?.(code);ABORT=true}quit_(code,new ExitStatus(code))};var exitJS=(status,implicit)=>{EXITSTATUS=status;_proc_exit(status)};var handleException=e=>{if(e instanceof ExitStatus||e=="unwind"){return EXITSTATUS}quit_(1,e)};var getCFunc=ident=>{var func=Module["_"+ident];return func};var HEAP8;var writeArrayToMemory=(array,buffer)=>{HEAP8.set(array,buffer)};var stackAlloc=sz=>__emscripten_stack_alloc(sz);var stringToUTF8OnStack=str=>{var size=lengthBytesUTF8(str)+1;var ret=stackAlloc(size);stringToUTF8(str,ret,size);return ret};var UTF8Decoder=globalThis.TextDecoder&&new TextDecoder;var findStringEnd=(heapOrArray,idx,maxBytesToRead,ignoreNul)=>{var maxIdx=idx+maxBytesToRead;if(ignoreNul)return maxIdx;while(heapOrArray[idx]&&!(idx>=maxIdx))++idx;return idx};var UTF8ArrayToString=(heapOrArray,idx=0,maxBytesToRead,ignoreNul)=>{var endPtr=findStringEnd(heapOrArray,idx,maxBytesToRead,ignoreNul);if(endPtr-idx>16&&heapOrArray.buffer&&UTF8Decoder){return UTF8Decoder.decode(heapOrArray.subarray(idx,endPtr))}var str="";while(idx<endPtr){var u0=heapOrArray[idx++];if(!(u0&128)){str+=String.fromCharCode(u0);continue}var u1=heapOrArray[idx++]&63;if((u0&224)==192){str+=String.fromCharCode((u0&31)<<6|u1);continue}var u2=heapOrArray[idx++]&63;if((u0&240)==224){u0=(u0&15)<<12|u1<<6|u2}else{u0=(u0&7)<<18|u1<<12|u2<<6|heapOrArray[idx++]&63}if(u0<65536){str+=String.fromCharCode(u0)}else{var ch=u0-65536;str+=String.fromCharCode(55296|ch>>10,56320|ch&1023)}}return str};var UTF8ToString=(ptr,maxBytesToRead,ignoreNul)=>ptr?UTF8ArrayToString(HEAPU8,ptr,maxBytesToRead,ignoreNul):"";var ccall=(ident,returnType,argTypes,args,opts)=>{var toC={string:str=>{var ret=0;if(str!==null&&str!==undefined&&str!==0){ret=stringToUTF8OnStack(str)}return ret},array:arr=>{var ret=stackAlloc(arr.length);writeArrayToMemory(arr,ret);return ret}};function convertReturnValue(ret){if(returnType==="string"){return UTF8ToString(ret)}if(returnType==="boolean")return Boolean(ret);return ret}var func=getCFunc(ident);var cArgs=[];var stack=0;if(args){for(var i=0;i<args.length;i++){var converter=toC[argTypes[i]];if(converter){if(!stack)stack=stackSave();cArgs[i]=converter(args[i])}else{cArgs[i]=args[i]}}}var ret=func(...cArgs);function onDone(ret){if(stack)stackRestore(stack);return convertReturnValue(ret)}ret=onDone(ret);return ret};{if(Module["noExitRuntime"])noExitRuntime=Module["noExitRuntime"];if(Module["print"])out=Module["print"];if(Module["printErr"])err=Module["printErr"];if(Module["arguments"])programArgs=Module["arguments"];if(Module["thisProgram"])thisProgram=Module["thisProgram"];var preInit=Module["preInit"];if(preInit){if(typeof preInit=="function")Module["preInit"]=preInit=[preInit];while(preInit.length>0){preInit.shift()()}}}Module["ccall"]=ccall;var _Embaralhar,_IniciarTurnos,_IniciarPontuacao,_ReturnCart,_EscolherCarta,_PartidaEncerrada,_ProcessarResultadoJogada,_ObterJogadorDaUltimaJogada,_RealizarJogada,_EstadoDaCarta,_ObterPrimeiraCarta,_ObterSegundaCarta,_JogadaBloqueada,_OcultarErro,_main,_ObterJogadorAtual,_ObterPontos,_ObterTentativas,_ObterTotalTentativas,_ObterParesEncontrados,_ObterVencedor,_setThrew,__emscripten_stack_restore,__emscripten_stack_alloc,_emscripten_stack_get_current,memory,__indirect_function_table,wasmMemory;function assignWasmExports(wasmExports){_Embaralhar=Module["_Embaralhar"]=wasmExports["Embaralhar"];_IniciarTurnos=Module["_IniciarTurnos"]=wasmExports["IniciarTurnos"];_IniciarPontuacao=Module["_IniciarPontuacao"]=wasmExports["IniciarPontuacao"];_ReturnCart=Module["_ReturnCart"]=wasmExports["ReturnCart"];_EscolherCarta=Module["_EscolherCarta"]=wasmExports["EscolherCarta"];_PartidaEncerrada=Module["_PartidaEncerrada"]=wasmExports["PartidaEncerrada"];_ProcessarResultadoJogada=Module["_ProcessarResultadoJogada"]=wasmExports["ProcessarResultadoJogada"];_ObterJogadorDaUltimaJogada=Module["_ObterJogadorDaUltimaJogada"]=wasmExports["ObterJogadorDaUltimaJogada"];_RealizarJogada=Module["_RealizarJogada"]=wasmExports["RealizarJogada"];_EstadoDaCarta=Module["_EstadoDaCarta"]=wasmExports["EstadoDaCarta"];_ObterPrimeiraCarta=Module["_ObterPrimeiraCarta"]=wasmExports["ObterPrimeiraCarta"];_ObterSegundaCarta=Module["_ObterSegundaCarta"]=wasmExports["ObterSegundaCarta"];_JogadaBloqueada=Module["_JogadaBloqueada"]=wasmExports["JogadaBloqueada"];_OcultarErro=Module["_OcultarErro"]=wasmExports["OcultarErro"];_main=Module["_main"]=wasmExports["main"];_ObterJogadorAtual=Module["_ObterJogadorAtual"]=wasmExports["ObterJogadorAtual"];_ObterPontos=Module["_ObterPontos"]=wasmExports["ObterPontos"];_ObterTentativas=Module["_ObterTentativas"]=wasmExports["ObterTentativas"];_ObterTotalTentativas=Module["_ObterTotalTentativas"]=wasmExports["ObterTotalTentativas"];_ObterParesEncontrados=Module["_ObterParesEncontrados"]=wasmExports["ObterParesEncontrados"];_ObterVencedor=Module["_ObterVencedor"]=wasmExports["ObterVencedor"];_setThrew=wasmExports["setThrew"];__emscripten_stack_restore=wasmExports["_emscripten_stack_restore"];__emscripten_stack_alloc=wasmExports["_emscripten_stack_alloc"];_emscripten_stack_get_current=wasmExports["emscripten_stack_get_current"];memory=wasmMemory=wasmExports["memory"];__indirect_function_table=wasmExports["__indirect_function_table"]}var wasmImports={emscripten_date_now:_emscripten_date_now,emscripten_resize_heap:_emscripten_resize_heap,environ_get:_environ_get,environ_sizes_get:_environ_sizes_get};function callMain(){var entryFunction=_main;var argc=0;var argv=0;try{var ret=entryFunction(argc,argv);exitJS(ret,true);return ret}catch(e){return handleException(e)}}async function run(){preRun();var setStatus=Module["setStatus"];if(setStatus){setStatus("Running...");await new Promise(resolve=>setTimeout(resolve,1));setTimeout(setStatus,1,"")}if(ABORT)return;initRuntime();Module["onRuntimeInitialized"]?.();var noInitialRun=Module["noInitialRun"]||false;if(!noInitialRun)callMain();postRun()}var wasmExports;createWasm().then(()=>run());
+diff --git a/docs/projetoweb.wasm b/docs/projetoweb.wasm
+index 3d219d16512da89cb660d83b3bb67b48e98174e7..7d2586ee929d1fde836a68a60d35d098773345c9 100644
+GIT binary patch
+literal 9772
+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
+zw}u_fZiGZ-e)?w!goXn6Qtl-%%0DPQ0hd`w2CK>4EK_9R9MznhiVB9CrHXSR0HRO^
+zd5UKR6YiLjSR_HE7&46oY-A;pAC*XKVI`6jW+=~9&Bqc61ydV^X4{8`Lg-y$DR4V#
+zncs(dc)KC<55h0jlrj^!*p4F6!B+Jw7x0%UI#NI9=c;0&1~YD0){T=3n~F8<YUteU
+zXT+7KJ^*7@A5ea%J^*&e6HA<pBFvkklK+*4mG1@4nu>w4u9R6*sYAxz4M*l-GkIvB
+zY#rT_HeY>cGu9>Qn&8Z4tZsvlrJ)cNW>5u{7qzJ6BOyM<lIR&sBr$Mlj_dwE^H`RL
+z^Hbp=VU!JHc@wW2WF2C<{1cT_F+lldlnHAPYX(w9!eX3&(AS|UCY_?L6M-CCYj5~6
+zVZ+L5<@8wbV`!@f;sh#ToAAn1RlD3Y0sUmLHkba;G%=H7R7ltl^;15Q6o@gpq~<-M
+z6N1#7#ZyXzCnpsqo{fhUofTDkH<3i@uhynuVinY&IAM#Bi{mI2@Qk7x`qr{Wy;Qe)
+ziC2uT!kx1fg|SNsAlSTCW-5%?#>V4d8U69SLQ5L!B~-%w0Ch4&TwH$#VVG~4D8(+f
+zOi{27z~d1m<L2kWRD?M~xsgPgT8zPsG&82LEs15Vtt4zaC~(aO?j-{}Fpl6Nz?zsd
+zre9=JF=-uJuXhv;!+8e!DQSr!0()&ET8sjPVb&0JbEL>NB88murbtn<NRf$WoiTHK
+zhd3k`!HME2%51^ZXbU2SuzGXE$l_T6$PF!Gpj%M1DPm-!h+)^tRm8xli)>TGpa3zB
+z>?o&*fu=Sh25Vcy$YR7mTZ$NFdzsA+78WrwMGV=Vh`}gA$410Z^>saBXm#;fi7LUR
+z3KnaWriZ3Nvec0XHZzeS9WjxN)Ao3*RJ|ZtA&I#=2;m@!xC4@ELPlyxVg*+?LlQIX
+z5MPc%BY`uYl(m5)MpihY1&*o%XT%XZ=sW`A6|!2&vnB>~&IrPhb!;7Vur^<fD1ji0
+z3h(RHJ?WCsQr##}FlH2d(3~CGt8`>2Ll;=3^7!Ny`G}S1*O5IL<s<gIF&`zcC_upv
+z53VjHf*zFxEHAN5m6wum4~zalUb4A63V%ahvf>;yvlXToWu&wikBGP2%7)m{@Ri&u
+zBjFN6l@$Bw2FCEk*JjG);0v|KjHGM-4Sd<*n{r!*iK~<CMnYCTWUhwdO?13TitrI%
+zHl@-B_)@K5g%38=Nu39G0y~Jt8~D=I=q>P-EA(!PQob0k&^0by8@jBu30+`urn+;u
+z8C~rAJJ4nKJDbr(Ubzun$X6XLX_2QeYdrl4n6my4+y<%O*|-ZTVuA6)w?PP~+aSY~
+z`9c%CDVZn_%H-T=$0VpyL@LfXGwN>{3YQ=E{He`3H0|EqGxp-1Yk=^sUxm+gQ(d}u
+zUo3t6Hu;yR$iG=8f6O0240T>fTB(jHqg21n7a5<&Z}wTV&dU6yM9bYxqtDs2<P~}b
+zA>YB>i)wkDI<8Hd79fay?k)4b^O+0h8~Lx2J>AZ5u=s-G?`4+w3zJ7XivxG0Ggw$$
+z;c;fbANs7gqbIt<t~<6e7@m3dOn0s8!g9y$UFw`UvDk6Pjy`elm+tW1`EdBKI~*Q6
+z;P$$`4?KB%|NVdH`1$wSvcJ(2i8p?p&Yar{Z8VJU9P<OLu=n^=$M$J3?Z=)xvhVSO
+zd#!!^;1MH>zW3<i!{Iouw2vHpY~S(l_*2&2_rw$7z`iFqmXGIS8!KO&$PfJi+co$&
+bK3lXkpPhXEh|esa-_@Tm^|vtZ#*_aA!+toI
+
+delta 471
+zcmaKnK}#D!6vzMX?PN2X5v{aPj73(-K?J?kTuRAcb1M|2_sw)&G@4Chc0~%s4LMm9
+zTG@}#LofC0p_hD!-up#r>60D{h55nz&u`v)%(vG!jcvFhCjb;T2f%<Tss^AB1Fjw_
+zsvxO)NZ?hvd9iZHL8Rq*pr{e52AvW~K{VqThg#b0=a0%Xzf&vBvwY&;GnSL&T(%^s
+z8;z2*ocIFN>gVsAccUZc!L9wQJoDo{=Su`Ccf&DMz0J?8F0%6Nk<ZSdSCT9*Qa?N`
+zvvE?CE<H(nR>-gnji>)QSv5%!*7v;DZ7vYEev)RGD`HjAg`Gx^@JfCS^gi{z{0hHX
+zI=SrzuuJO*dZOjjKZ4D*xn2)qjwyzv<B8?c&h_yIZ8COwuIsjHKQ@aH``5_5QLy!0
+zXQOi&N$RVfy^dnqW!TFomM$1$rX+Ey&GY(qXX}j}JM4|z*}>33#+#R03eW<CCE<zC
+L5q5-C;s5>*FG*zg
+
+diff --git a/documentos/RF03_Eduardo.md b/documentos/RF03_Eduardo.md
+new file mode 100644
+index 0000000..96b017d
+--- /dev/null
++++ b/documentos/RF03_Eduardo.md
+@@ -0,0 +1,15 @@
++# Integração do RF03 e da partida completa
++
++Eduardo Shioga, RA 2565579, responde pelo planejamento e pelo RF03. Arthur Simão Gimenes Dalio Pereira, RA 2565544, responde pelas ferramentas, pelo RF02 e pela modelagem de classes.
++
++A ponte em projetocertificador.c integra os cinco módulos. Embaralhar inicializa tabuleiro, turnos, placar e resultado. Um acerto é registrado imediatamente. No erro, o registro ocorre depois de OcultarErro liberar as cartas. concluir_tentativa atualiza o turno, registra a tentativa para o autor e verifica o resultado.
++
++ObterJogadorAtual consulta quem joga em seguida. ObterJogadorDaUltimaJogada consulta quem realizou a tentativa anterior. São informações diferentes após um erro.
++
++A interface recebe o evento rf02:jogadaConcluida com resultado, primeira, segunda, jogador e proximoJogador. Nesta versão, esse evento é informativo: a pontuação e o turno já foram registrados em C. Não registre novamente uma tentativa em um ouvinte JavaScript.
++
++Se a equipe preferir substituir pontuacao.c ou resultado.c pelos arquivos particulares dos responsáveis, mantenha um único ponto de registro e confira as assinaturas dos cabeçalhos. Os testes devem continuar aprovados. O pacote inclui implementações consolidadas para a revisão da equipe e não sobrescreve arquivos privados que ainda não foram publicados.
++
++RF05 retorna -2 antes da primeira partida, -1 durante uma partida, 0 no empate e 1 ou 2 para o vencedor. Uma partida encerrada recusa novas jogadas. A pontuação final já está atualizada quando o resultado é consultado.
++
++Os cinco requisitos foram validados em C, WebAssembly e Chromium real. A equipe ainda deve aplicar a versão ao repositório, publicar os arquivos de docs e ensaiar no computador da apresentação.
+diff --git a/src/console.c b/src/console.c
+new file mode 100644
+index 0000000..527c760
+--- /dev/null
++++ b/src/console.c
+@@ -0,0 +1,94 @@
++#include <stdio.h>
++#include <locale.h>
++#include "rf02.h"
++#include "turnos.h"
++#include "pontuacao.h"
++#include "resultado.h"
++
++void Embaralhar(void);
++const char *ReturnCart(int posicao);
++int EstadoDaCarta(int posicao);
++int RealizarJogada(int linha1, int coluna1, int linha2, int coluna2);
++int OcultarErro(void);
++
++static void mostrar_tabuleiro(void) {
++    int i;
++    for (i = 0; i < 16; i++) {
++        if (EstadoDaCarta(i) == CARTA_OCULTA) {
++            printf("[%8d]", i + 1);
++        } else {
++            printf("[%8s]", ReturnCart(i));
++        }
++        if ((i + 1) % 4 == 0) {
++            printf("\n");
++        }
++    }
++    printf("Jogador 1: %d pares, %d tentativas\n", ObterPontos(1), ObterTentativas(1));
++    printf("Jogador 2: %d pares, %d tentativas\n", ObterPontos(2), ObterTentativas(2));
++}
++
++static int limpar_linha(void) {
++    int caractere = getchar();
++    while (caractere != '\n' && caractere != EOF) {
++        caractere = getchar();
++    }
++    return caractere;
++}
++
++int main(void) {
++    int a;
++    int b;
++    int resultado;
++    int vencedor;
++    int continuar = 1;
++    int lidos;
++    setlocale(LC_ALL, "Portuguese");
++    printf("JOGO DA MEMORIA - DOIS JOGADORES\n");
++    while (continuar == 1) {
++        Embaralhar();
++        while (!PartidaEncerrada()) {
++            mostrar_tabuleiro();
++            printf("Vez do jogador %d. Escolha duas posicoes de 1 a 16: ", ObterJogadorAtual());
++            lidos = scanf("%d %d", &a, &b);
++            if (lidos == EOF) {
++                printf("\nEntrada encerrada.\n");
++                return 0;
++            }
++            if (lidos != 2) {
++                printf("Digite dois numeros inteiros.\n");
++                if (limpar_linha() == EOF) {
++                    return 0;
++                }
++            } else if (a < 1 || a > 16 || b < 1 || b > 16) {
++                printf("Posicoes invalidas. A vez foi mantida.\n");
++            } else {
++                resultado = RealizarJogada((a - 1) / 4 + 1, (a - 1) % 4 + 1,
++                                          (b - 1) / 4 + 1, (b - 1) % 4 + 1);
++                if (resultado == PAR_ENCONTRADO) {
++                    printf("Par correto.\n");
++                } else if (resultado == PAR_DIFERENTE) {
++                    mostrar_tabuleiro();
++                    printf("Cartas diferentes. Pressione Enter para oculta-las e passar a vez.\n");
++                    if (limpar_linha() == EOF || getchar() == EOF) {
++                        return 0;
++                    }
++                    OcultarErro();
++                } else {
++                    printf("Escolha duas cartas ocultas diferentes.\n");
++                }
++            }
++        }
++        mostrar_tabuleiro();
++        vencedor = ObterVencedor();
++        if (vencedor == 0) {
++            printf("Empate: quatro pares para cada jogador.\n");
++        } else {
++            printf("Jogador %d venceu com %d pares.\n", vencedor, ObterPontos(vencedor));
++        }
++        printf("Nova partida? Digite 1 para sim ou 0 para sair: ");
++        if (scanf("%d", &continuar) != 1) {
++            continuar = 0;
++        }
++    }
++    return 0;
++}
+diff --git a/src/pontuacao.c b/src/pontuacao.c
+new file mode 100644
+index 0000000..70fefb6
+--- /dev/null
++++ b/src/pontuacao.c
+@@ -0,0 +1,70 @@
++#include "pontuacao.h"
++#include "rf02.h"
++
++#ifdef __EMSCRIPTEN__
++#include <emscripten.h>
++#else
++#define EMSCRIPTEN_KEEPALIVE
++#endif
++
++static Placar placar;
++
++void rf04_inicializar(Placar *p) {
++    int i;
++    if (!p) {
++        return;
++    }
++    for (i = 0; i < 2; i++) {
++        p->jogadores[i].pontos = 0;
++        p->jogadores[i].tentativas = 0;
++    }
++    p->totalTentativas = 0;
++    p->paresEncontrados = 0;
++}
++
++int rf04_registrar(Placar *p, int jogador, int resultado) {
++    if (!p || jogador < 1 || jogador > 2 || p->paresEncontrados >= 8 ||
++        (resultado != PAR_ENCONTRADO && resultado != PAR_DIFERENTE)) {
++        return 0;
++    }
++    p->jogadores[jogador - 1].tentativas++;
++    p->totalTentativas++;
++    if (resultado == PAR_ENCONTRADO) {
++        p->jogadores[jogador - 1].pontos++;
++        p->paresEncontrados++;
++    }
++    return 1;
++}
++
++EMSCRIPTEN_KEEPALIVE
++void IniciarPontuacao(void) {
++    rf04_inicializar(&placar);
++}
++
++int RegistrarTentativa(int jogador, int resultado) {
++    return rf04_registrar(&placar, jogador, resultado);
++}
++
++EMSCRIPTEN_KEEPALIVE
++int ObterPontos(int jogador) {
++    return jogador >= 1 && jogador <= 2 ? placar.jogadores[jogador - 1].pontos : -1;
++}
++
++EMSCRIPTEN_KEEPALIVE
++int ObterTentativas(int jogador) {
++    return jogador >= 1 && jogador <= 2 ? placar.jogadores[jogador - 1].tentativas : -1;
++}
++
++EMSCRIPTEN_KEEPALIVE
++int ObterTotalTentativas(void) {
++    return placar.totalTentativas;
++}
++
++EMSCRIPTEN_KEEPALIVE
++int ObterParesEncontrados(void) {
++    return placar.paresEncontrados;
++}
++
++const Placar *ConsultarPlacar(void) {
++    return &placar;
++}
+diff --git a/src/pontuacao.h b/src/pontuacao.h
+new file mode 100644
+index 0000000..04c965a
+--- /dev/null
++++ b/src/pontuacao.h
+@@ -0,0 +1,25 @@
++#ifndef PONTUACAO_H
++#define PONTUACAO_H
++
++typedef struct {
++    int pontos;
++    int tentativas;
++} Jogador;
++
++typedef struct {
++    Jogador jogadores[2];
++    int totalTentativas;
++    int paresEncontrados;
++} Placar;
++
++void rf04_inicializar(Placar *placar);
++int rf04_registrar(Placar *placar, int jogador, int resultado);
++void IniciarPontuacao(void);
++int RegistrarTentativa(int jogador, int resultado);
++int ObterPontos(int jogador);
++int ObterTentativas(int jogador);
++int ObterTotalTentativas(void);
++int ObterParesEncontrados(void);
++const Placar *ConsultarPlacar(void);
++
++#endif
+diff --git a/src/projetocertificador.c b/src/projetocertificador.c
+index cb4cf63..d582474 100644
+--- a/src/projetocertificador.c
++++ b/src/projetocertificador.c
+@@ -1,34 +1,133 @@
+-#include <emscripten.h>
+-#include <stdio.h> 
+-#include <stdlib.h>
+-#include <time.h>
+-
+-char *cartas[16] = {
+-    "Ana", "Carlos", "Beatriz", "Jair",
+-    "Marcio", "Odete", "Claudia", "Mauricio",
+-    "Ana", "Carlos", "Beatriz", "Jair",
+-    "Marcio", "Odete", "Claudia", "Mauricio"
+-};
+-
+-EMSCRIPTEN_KEEPALIVE
+-void Embaralhar (){
+-    srand(time(NULL));
+-    int j = 0;
+-    char* guard;
+-
+-    for(int i = 15; i>0; i--){
+-        j = rand() % (i+1);
+-        guard = cartas[i];
+-        cartas[i] = cartas[j];
+-        cartas[j] = guard;        
+-    }
+-}
+-
+-
+-EMSCRIPTEN_KEEPALIVE
+-char* ReturnCart (int posicao) {
+-    return cartas[posicao];
+-}
+-
+-int main(){
+-}
+\ No newline at end of file
++#include <stdlib.h>
++#include <time.h>
++#include <locale.h>
++#include "rf02.h"
++#include "turnos.h"
++#include "pontuacao.h"
++#include "resultado.h"
++
++#ifdef __EMSCRIPTEN__
++#include <emscripten.h>
++#else
++#define EMSCRIPTEN_KEEPALIVE
++#endif
++
++const char *cartas[RF02_TOTAL_CARTAS] = {
++    "Ana", "Carlos", "Beatriz", "Jair",
++    "Marcio", "Odete", "Claudia", "Mauricio",
++    "Ana", "Carlos", "Beatriz", "Jair",
++    "Marcio", "Odete", "Claudia", "Mauricio"
++};
++
++static JogoMemoria jogo;
++static int preparado = 0;
++
++static void concluir_tentativa(int resultado) {
++    ProcessarResultadoJogada(resultado);
++    RegistrarTentativa(ObterJogadorDaUltimaJogada(), resultado);
++    AtualizarResultado();
++}
++
++EMSCRIPTEN_KEEPALIVE
++void Embaralhar(void) {
++    static int semente_definida = 0;
++    int i;
++    int j;
++    const char *guard;
++
++    if (!semente_definida) {
++        srand((unsigned int)time(0));
++        semente_definida = 1;
++    }
++
++    for (i = RF02_TOTAL_CARTAS - 1; i > 0; i--) {
++        j = rand() % (i + 1);
++        guard = cartas[i];
++        cartas[i] = cartas[j];
++        cartas[j] = guard;
++    }
++
++    preparado = rf02_inicializar(&jogo, cartas);
++    IniciarTurnos();
++    IniciarPontuacao();
++    IniciarResultado();
++}
++
++EMSCRIPTEN_KEEPALIVE
++const char *ReturnCart(int posicao) {
++    if (!preparado || posicao < 0 || posicao >= RF02_TOTAL_CARTAS) {
++        return "";
++    }
++
++    return jogo.tabuleiro.cartas[posicao].simbolo;
++}
++
++EMSCRIPTEN_KEEPALIVE
++int EscolherCarta(int posicao) {
++    int resultado;
++
++    if (!preparado || PartidaEncerrada()) {
++        return JOGADA_INVALIDA;
++    }
++
++    resultado = rf02_escolher_carta(&jogo, posicao);
++    if (resultado == PAR_ENCONTRADO) {
++        concluir_tentativa(resultado);
++    }
++    return resultado;
++}
++
++EMSCRIPTEN_KEEPALIVE
++int RealizarJogada(int linha1, int coluna1, int linha2, int coluna2) {
++    int resultado;
++
++    if (!preparado || PartidaEncerrada()) {
++        return JOGADA_INVALIDA;
++    }
++
++    resultado = rf02_jogar_par(&jogo, linha1, coluna1, linha2, coluna2);
++    if (resultado == PAR_ENCONTRADO) {
++        concluir_tentativa(resultado);
++    }
++    return resultado;
++}
++
++EMSCRIPTEN_KEEPALIVE
++int EstadoDaCarta(int posicao) {
++    if (!preparado || posicao < 0 || posicao >= RF02_TOTAL_CARTAS) {
++        return -1;
++    }
++
++    return jogo.tabuleiro.cartas[posicao].estado;
++}
++
++EMSCRIPTEN_KEEPALIVE
++int ObterPrimeiraCarta(void) {
++    return preparado ? jogo.jogada.primeira : -1;
++}
++
++EMSCRIPTEN_KEEPALIVE
++int ObterSegundaCarta(void) {
++    return preparado ? jogo.jogada.segunda : -1;
++}
++
++EMSCRIPTEN_KEEPALIVE
++int JogadaBloqueada(void) {
++    return preparado ? jogo.jogada.aguardando : 0;
++}
++
++EMSCRIPTEN_KEEPALIVE
++int OcultarErro(void) {
++    int ocultou = preparado ? rf02_ocultar_erro(&jogo) : 0;
++    if (ocultou) {
++        concluir_tentativa(PAR_DIFERENTE);
++    }
++    return ocultou;
++}
++
++#ifndef RF02_SEM_MAIN
++int main(void) {
++    setlocale(LC_ALL, "Portuguese");
++    return 0;
++}
++#endif
+diff --git a/src/resultado.c b/src/resultado.c
+new file mode 100644
+index 0000000..91e6469
+--- /dev/null
++++ b/src/resultado.c
+@@ -0,0 +1,52 @@
++#include "resultado.h"
++
++#ifdef __EMSCRIPTEN__
++#include <emscripten.h>
++#else
++#define EMSCRIPTEN_KEEPALIVE
++#endif
++
++static ResultadoPartida partida = {0, 0, -2};
++
++void rf05_inicializar(ResultadoPartida *r) {
++    if (r) {
++        r->iniciada = 1;
++        r->encerrada = 0;
++        r->vencedor = -1;
++    }
++}
++
++int rf05_verificar(ResultadoPartida *r, const Placar *p) {
++    if (!r || !p || !r->iniciada) {
++        return -2;
++    }
++    if (!r->encerrada && p->paresEncontrados == 8) {
++        r->encerrada = 1;
++        if (p->jogadores[0].pontos > p->jogadores[1].pontos) {
++            r->vencedor = 1;
++        } else if (p->jogadores[1].pontos > p->jogadores[0].pontos) {
++            r->vencedor = 2;
++        } else {
++            r->vencedor = 0;
++        }
++    }
++    return r->vencedor;
++}
++
++void IniciarResultado(void) {
++    rf05_inicializar(&partida);
++}
++
++int AtualizarResultado(void) {
++    return rf05_verificar(&partida, ConsultarPlacar());
++}
++
++EMSCRIPTEN_KEEPALIVE
++int PartidaEncerrada(void) {
++    return partida.encerrada;
++}
++
++EMSCRIPTEN_KEEPALIVE
++int ObterVencedor(void) {
++    return partida.vencedor;
++}
+diff --git a/src/resultado.h b/src/resultado.h
+new file mode 100644
+index 0000000..d849e2d
+--- /dev/null
++++ b/src/resultado.h
+@@ -0,0 +1,19 @@
++#ifndef RESULTADO_H
++#define RESULTADO_H
++
++#include "pontuacao.h"
++
++typedef struct {
++    int iniciada;
++    int encerrada;
++    int vencedor;
++} ResultadoPartida;
++
++void rf05_inicializar(ResultadoPartida *resultado);
++int rf05_verificar(ResultadoPartida *resultado, const Placar *placar);
++void IniciarResultado(void);
++int AtualizarResultado(void);
++int PartidaEncerrada(void);
++int ObterVencedor(void);
++
++#endif
+diff --git a/src/rf02.c b/src/rf02.c
+new file mode 100644
+index 0000000..4be7c9c
+--- /dev/null
++++ b/src/rf02.c
+@@ -0,0 +1,128 @@
++#include "rf02.h"
++
++static int posicao_valida(int posicao) {
++    return posicao >= 0 && posicao < RF02_TOTAL_CARTAS;
++}
++
++static int simbolos_iguais(const char *primeiro, const char *segundo) {
++    int i = 0;
++
++    if (primeiro == 0 || segundo == 0) {
++        return 0;
++    }
++
++    while (primeiro[i] != '\0' && segundo[i] != '\0' &&
++           primeiro[i] == segundo[i]) {
++        i++;
++    }
++
++    return primeiro[i] == segundo[i];
++}
++
++static void limpar_jogada(Jogada *jogada) {
++    jogada->primeira = -1;
++    jogada->segunda = -1;
++    jogada->aguardando = 0;
++}
++
++int rf02_inicializar(JogoMemoria *jogo, const char *const simbolos[]) {
++    int i;
++
++    if (jogo == 0 || simbolos == 0) {
++        return 0;
++    }
++
++    for (i = 0; i < RF02_TOTAL_CARTAS; i++) {
++        if (simbolos[i] == 0) {
++            return 0;
++        }
++    }
++
++    for (i = 0; i < RF02_TOTAL_CARTAS; i++) {
++        jogo->tabuleiro.cartas[i].simbolo = simbolos[i];
++        jogo->tabuleiro.cartas[i].estado = CARTA_OCULTA;
++    }
++
++    limpar_jogada(&jogo->jogada);
++    return 1;
++}
++
++ResultadoJogada rf02_escolher_carta(JogoMemoria *jogo, int posicao) {
++    Carta *primeira;
++    Carta *segunda;
++
++    if (jogo == 0 || !posicao_valida(posicao)) {
++        return JOGADA_INVALIDA;
++    }
++
++    if (jogo->jogada.aguardando) {
++        return AGUARDANDO_LIBERACAO;
++    }
++
++    if (jogo->tabuleiro.cartas[posicao].estado != CARTA_OCULTA) {
++        return JOGADA_INVALIDA;
++    }
++
++    if (jogo->jogada.primeira == -1) {
++        jogo->jogada.primeira = posicao;
++        jogo->tabuleiro.cartas[posicao].estado = CARTA_VISIVEL;
++        return PRIMEIRA_CARTA;
++    }
++
++    jogo->jogada.segunda = posicao;
++    primeira = &jogo->tabuleiro.cartas[jogo->jogada.primeira];
++    segunda = &jogo->tabuleiro.cartas[posicao];
++    segunda->estado = CARTA_VISIVEL;
++
++    if (simbolos_iguais(primeira->simbolo, segunda->simbolo)) {
++        primeira->estado = CARTA_ENCONTRADA;
++        segunda->estado = CARTA_ENCONTRADA;
++        limpar_jogada(&jogo->jogada);
++        return PAR_ENCONTRADO;
++    }
++
++    jogo->jogada.aguardando = 1;
++    return PAR_DIFERENTE;
++}
++
++ResultadoJogada rf02_jogar_par(JogoMemoria *jogo, int linha1, int coluna1,
++                             int linha2, int coluna2) {
++    int primeira;
++    int segunda;
++
++    if (jogo == 0 || linha1 < 1 || linha1 > RF02_LADO_TABULEIRO ||
++        coluna1 < 1 || coluna1 > RF02_LADO_TABULEIRO ||
++        linha2 < 1 || linha2 > RF02_LADO_TABULEIRO ||
++        coluna2 < 1 || coluna2 > RF02_LADO_TABULEIRO) {
++        return JOGADA_INVALIDA;
++    }
++
++    if (jogo->jogada.aguardando) {
++        return AGUARDANDO_LIBERACAO;
++    }
++
++    primeira = (linha1 - 1) * RF02_LADO_TABULEIRO + coluna1 - 1;
++    segunda = (linha2 - 1) * RF02_LADO_TABULEIRO + coluna2 - 1;
++
++    if (jogo->jogada.primeira != -1 || primeira == segunda ||
++        jogo->tabuleiro.cartas[primeira].estado != CARTA_OCULTA ||
++        jogo->tabuleiro.cartas[segunda].estado != CARTA_OCULTA) {
++        return JOGADA_INVALIDA;
++    }
++
++    rf02_escolher_carta(jogo, primeira);
++    return rf02_escolher_carta(jogo, segunda);
++}
++
++int rf02_ocultar_erro(JogoMemoria *jogo) {
++    if (jogo == 0 || !jogo->jogada.aguardando ||
++        !posicao_valida(jogo->jogada.primeira) ||
++        !posicao_valida(jogo->jogada.segunda)) {
++        return 0;
++    }
++
++    jogo->tabuleiro.cartas[jogo->jogada.primeira].estado = CARTA_OCULTA;
++    jogo->tabuleiro.cartas[jogo->jogada.segunda].estado = CARTA_OCULTA;
++    limpar_jogada(&jogo->jogada);
++    return 1;
++}
+diff --git a/src/rf02.h b/src/rf02.h
+new file mode 100644
+index 0000000..b619dba
+--- /dev/null
++++ b/src/rf02.h
+@@ -0,0 +1,47 @@
++#ifndef RF02_H
++#define RF02_H
++
++#define RF02_TOTAL_CARTAS 16
++#define RF02_LADO_TABULEIRO 4
++
++typedef enum {
++    CARTA_OCULTA = 0,
++    CARTA_VISIVEL = 1,
++    CARTA_ENCONTRADA = 2
++} EstadoCarta;
++
++typedef enum {
++    JOGADA_INVALIDA = -1,
++    PRIMEIRA_CARTA = 0,
++    PAR_ENCONTRADO = 1,
++    PAR_DIFERENTE = 2,
++    AGUARDANDO_LIBERACAO = 3
++} ResultadoJogada;
++
++typedef struct {
++    const char *simbolo;
++    EstadoCarta estado;
++} Carta;
++
++typedef struct {
++    Carta cartas[RF02_TOTAL_CARTAS];
++} Tabuleiro;
++
++typedef struct {
++    int primeira;
++    int segunda;
++    int aguardando;
++} Jogada;
++
++typedef struct {
++    Tabuleiro tabuleiro;
++    Jogada jogada;
++} JogoMemoria;
++
++int rf02_inicializar(JogoMemoria *jogo, const char *const simbolos[]);
++ResultadoJogada rf02_escolher_carta(JogoMemoria *jogo, int posicao);
++ResultadoJogada rf02_jogar_par(JogoMemoria *jogo, int linha1, int coluna1,
++                             int linha2, int coluna2);
++int rf02_ocultar_erro(JogoMemoria *jogo);
++
++#endif
+diff --git a/src/turnos.c b/src/turnos.c
+new file mode 100644
+index 0000000..ae75d9a
+--- /dev/null
++++ b/src/turnos.c
+@@ -0,0 +1,67 @@
++#include "turnos.h"
++#include "rf02.h"
++
++#ifdef __EMSCRIPTEN__
++#include <emscripten.h>
++#else
++#define EMSCRIPTEN_KEEPALIVE
++#endif
++
++static ControleTurnos controle = {1, 0};
++
++static int controle_valido(const ControleTurnos *turnos) {
++    return turnos && (turnos->jogadorAtual == 1 || turnos->jogadorAtual == 2);
++}
++
++void rf03_inicializar(ControleTurnos *turnos) {
++    if (turnos) {
++        turnos->jogadorAtual = 1;
++        turnos->ultimoJogador = 0;
++    }
++}
++
++int rf03_obter_jogador(const ControleTurnos *turnos) {
++    return controle_valido(turnos) ? turnos->jogadorAtual : 0;
++}
++
++int rf03_obter_ultimo_jogador(const ControleTurnos *turnos) {
++    return controle_valido(turnos) ? turnos->ultimoJogador : 0;
++}
++
++int rf03_processar_resultado(ControleTurnos *turnos, int resultado) {
++    if (!controle_valido(turnos)) {
++        return 0;
++    }
++
++    if (resultado == PAR_ENCONTRADO || resultado == PAR_DIFERENTE) {
++        turnos->ultimoJogador = turnos->jogadorAtual;
++        if (resultado == PAR_DIFERENTE) {
++            turnos->jogadorAtual = 3 - turnos->jogadorAtual;
++        }
++    } else if (resultado != JOGADA_INVALIDA && resultado != PRIMEIRA_CARTA &&
++               resultado != AGUARDANDO_LIBERACAO) {
++        return 0;
++    }
++
++    return turnos->jogadorAtual;
++}
++
++EMSCRIPTEN_KEEPALIVE
++void IniciarTurnos(void) {
++    rf03_inicializar(&controle);
++}
++
++EMSCRIPTEN_KEEPALIVE
++int ObterJogadorAtual(void) {
++    return rf03_obter_jogador(&controle);
++}
++
++EMSCRIPTEN_KEEPALIVE
++int ObterJogadorDaUltimaJogada(void) {
++    return rf03_obter_ultimo_jogador(&controle);
++}
++
++EMSCRIPTEN_KEEPALIVE
++int ProcessarResultadoJogada(int resultado) {
++    return rf03_processar_resultado(&controle, resultado);
++}
+diff --git a/src/turnos.h b/src/turnos.h
+new file mode 100644
+index 0000000..fb911b9
+--- /dev/null
++++ b/src/turnos.h
+@@ -0,0 +1,19 @@
++#ifndef TURNOS_H
++#define TURNOS_H
++
++typedef struct {
++    int jogadorAtual;
++    int ultimoJogador;
++} ControleTurnos;
++
++void rf03_inicializar(ControleTurnos *turnos);
++int rf03_obter_jogador(const ControleTurnos *turnos);
++int rf03_obter_ultimo_jogador(const ControleTurnos *turnos);
++int rf03_processar_resultado(ControleTurnos *turnos, int resultado);
++
++void IniciarTurnos(void);
++int ObterJogadorAtual(void);
++int ObterJogadorDaUltimaJogada(void);
++int ProcessarResultadoJogada(int resultado);
++
++#endif
+diff --git a/tests/README.md b/tests/README.md
+index cfe1f10..0a989c7 100644
+--- a/tests/README.md
++++ b/tests/README.md
+@@ -1,22 +1,9 @@
+-# Testes do jogo
++# Testes da versão integrada
+ 
+-## Teste inicial realizado
++Execute sh tests/executar.sh na raiz do projeto com GCC e Node.js disponíveis. Para incluir AddressSanitizer e UndefinedBehaviorSanitizer, execute TESTAR_COM_SANITIZERS=1 sh tests/executar.sh em um ambiente que suporte esses recursos.
+ 
+-A versão compilada foi executada localmente no navegador.
++O conjunto cobre seleção de cartas, comparação por conteúdo, posições inválidas, pares permanentes, bloqueio, reinício, alternância da vez, identificação do autor, pontuação, tentativas, vitória de cada jogador e empate.
+ 
+-Foi verificado:
+-- Exibição das 16 cartas.
+-- Revelação do nome ao clicar.
+-- Funcionamento do botão Embaralhar.
++O teste test_interface_wasm.cjs usa os arquivos compilados de docs e um DOM simulado. Depois de alterar o código C, recompile a versão web antes desse teste.
+ 
+-## Testes de integração planejados
+-
+-- Confirmar que um par correto é registrado.
+-- Confirmar a atualização de pontos e tentativas.
+-- Verificar o encerramento após encontrar os 8 pares.
+-- Conferir o resultado final.
+-- Impedir novas jogadas após o encerramento.
+-- Verificar se reiniciar limpa os dados da partida.
+-
+-Esses testes serão implementados após a integração
+-dos módulos do grupo.
++Também foi executado um teste externo com Playwright e Chromium real. Ele verificou a página web, pontuação, troca de jogador, vitória, empate, reinício e ausência de rolagem horizontal em uma tela de 390 pixels. Não é necessário instalar Playwright para usar ou apresentar o projeto.
+diff --git a/tests/executar.sh b/tests/executar.sh
+new file mode 100644
+index 0000000..ed989e7
+--- /dev/null
++++ b/tests/executar.sh
+@@ -0,0 +1,19 @@
++#!/bin/sh
++set -eu
++cd "$(dirname "$0")/.."
++mkdir -p tmp
++flags='-std=c11 -Wall -Wextra -Werror -pedantic'
++if [ "${TESTAR_COM_SANITIZERS:-0}" = 1 ]; then
++    flags="$flags -fsanitize=address,undefined"
++    export ASAN_OPTIONS=detect_leaks=0
++fi
++for teste in rf02 turnos bridge integracao_turnos partida_completa; do
++    case "$teste" in
++        rf02) fontes='src/rf02.c tests/test_rf02.c' ;;
++        turnos) fontes='src/turnos.c tests/test_turnos.c' ;;
++        *) fontes="src/projetocertificador.c src/rf02.c src/turnos.c src/pontuacao.c src/resultado.c tests/test_${teste}.c" ;;
++    esac
++    gcc $flags -DRF02_SEM_MAIN $fontes -o "tmp/test_$teste"
++    "./tmp/test_$teste"
++done
++node tests/test_interface_wasm.cjs
+diff --git a/tests/test_bridge.c b/tests/test_bridge.c
+new file mode 100644
+index 0000000..e5f1b4f
+--- /dev/null
++++ b/tests/test_bridge.c
+@@ -0,0 +1,62 @@
++#include <assert.h>
++#include <stdio.h>
++#include <locale.h>
++
++void Embaralhar(void);
++const char *ReturnCart(int posicao);
++int EscolherCarta(int posicao);
++int EstadoDaCarta(int posicao);
++int ObterPrimeiraCarta(void);
++int JogadaBloqueada(void);
++int OcultarErro(void);
++
++static int iguais(const char *a, const char *b) {
++    int i = 0;
++    while (a[i] != '\0' && a[i] == b[i]) {
++        i++;
++    }
++    return a[i] == b[i];
++}
++
++int main(void) {
++    int i;
++    int j;
++    int par = -1;
++    int ocorrencias;
++
++    setlocale(LC_ALL, "Portuguese");
++    assert(EscolherCarta(0) == -1);
++    assert(EstadoDaCarta(0) == -1);
++    assert(ReturnCart(0)[0] == '\0');
++    Embaralhar();
++    for (i = 0; i < 16; i++) {
++        ocorrencias = 0;
++        assert(EstadoDaCarta(i) == 0);
++        for (j = 0; j < 16; j++) {
++            ocorrencias += iguais(ReturnCart(i), ReturnCart(j));
++        }
++        assert(ocorrencias == 2);
++    }
++    assert(ReturnCart(-1)[0] == '\0');
++    assert(ReturnCart(16)[0] == '\0');
++    assert(EstadoDaCarta(-1) == -1);
++    for (j = 1; j < 16; j++) {
++        if (iguais(ReturnCart(0), ReturnCart(j))) {
++            par = j;
++        }
++    }
++    assert(par != -1);
++    assert(EscolherCarta(0) == 0);
++    assert(ObterPrimeiraCarta() == 0);
++    assert(EscolherCarta(par) == 1);
++    assert(EstadoDaCarta(0) == 2);
++    assert(EstadoDaCarta(par) == 2);
++    assert(!JogadaBloqueada() && !OcultarErro());
++    Embaralhar();
++    assert(ObterPrimeiraCarta() == -1);
++    for (i = 0; i < 16; i++) {
++        assert(EstadoDaCarta(i) == 0);
++    }
++    puts("11 ponte publica, embaralhamento com oito pares e reinicio: OK");
++    return 0;
++}
+diff --git a/tests/test_integracao_turnos.c b/tests/test_integracao_turnos.c
+new file mode 100644
+index 0000000..c0a7dd1
+--- /dev/null
++++ b/tests/test_integracao_turnos.c
+@@ -0,0 +1,92 @@
++#include <assert.h>
++#include <stdio.h>
++#include "../src/rf02.h"
++#include "../src/turnos.h"
++
++void Embaralhar(void);
++const char *ReturnCart(int posicao);
++int EscolherCarta(int posicao);
++int RealizarJogada(int linha1, int coluna1, int linha2, int coluna2);
++int EstadoDaCarta(int posicao);
++int OcultarErro(void);
++int JogadaBloqueada(void);
++
++static int iguais(const char *a, const char *b) {
++    while (*a && *a == *b) {
++        a++;
++        b++;
++    }
++    return *a == *b;
++}
++
++static void achar_par(int *primeira, int *segunda, int mesmo_simbolo) {
++    int i;
++    int j;
++    *primeira = -1;
++    *segunda = -1;
++    for (i = 0; i < RF02_TOTAL_CARTAS; i++) {
++        for (j = i + 1; j < RF02_TOTAL_CARTAS; j++) {
++            if (EstadoDaCarta(i) == CARTA_OCULTA &&
++                EstadoDaCarta(j) == CARTA_OCULTA &&
++                iguais(ReturnCart(i), ReturnCart(j)) == mesmo_simbolo) {
++                *primeira = i;
++                *segunda = j;
++                return;
++            }
++        }
++    }
++    assert(*primeira != -1);
++}
++
++int main(void) {
++    int a;
++    int b;
++    Embaralhar();
++    assert(ObterJogadorAtual() == 1);
++    assert(ObterJogadorDaUltimaJogada() == 0);
++    assert(EscolherCarta(-1) == JOGADA_INVALIDA);
++    assert(ObterJogadorAtual() == 1);
++    achar_par(&a, &b, 1);
++    assert(EscolherCarta(a) == PRIMEIRA_CARTA);
++    assert(EscolherCarta(a) == JOGADA_INVALIDA);
++    assert(ObterJogadorDaUltimaJogada() == 0);
++    assert(EscolherCarta(b) == PAR_ENCONTRADO);
++    assert(ObterJogadorAtual() == 1);
++    assert(ObterJogadorDaUltimaJogada() == 1);
++    assert(OcultarErro() == 0);
++    achar_par(&a, &b, 0);
++    assert(EscolherCarta(a) == PRIMEIRA_CARTA);
++    assert(EscolherCarta(b) == PAR_DIFERENTE);
++    assert(ObterJogadorAtual() == 1);
++    assert(JogadaBloqueada() == 1);
++    assert(EscolherCarta(15) == AGUARDANDO_LIBERACAO);
++    assert(OcultarErro() == 1);
++    assert(ObterJogadorAtual() == 2);
++    assert(ObterJogadorDaUltimaJogada() == 1);
++    assert(OcultarErro() == 0);
++    assert(ObterJogadorAtual() == 2);
++    achar_par(&a, &b, 0);
++    assert(EscolherCarta(a) == PRIMEIRA_CARTA);
++    assert(EscolherCarta(b) == PAR_DIFERENTE);
++    assert(ObterJogadorAtual() == 2);
++    assert(OcultarErro() == 1);
++    assert(ObterJogadorAtual() == 1);
++    assert(ObterJogadorDaUltimaJogada() == 2);
++    Embaralhar();
++    assert(ObterJogadorAtual() == 1);
++    assert(ObterJogadorDaUltimaJogada() == 0);
++    achar_par(&a, &b, 1);
++    assert(RealizarJogada(a / 4 + 1, a % 4 + 1, b / 4 + 1, b % 4 + 1) == PAR_ENCONTRADO);
++    assert(ObterJogadorAtual() == 1 && ObterJogadorDaUltimaJogada() == 1);
++    achar_par(&a, &b, 0);
++    assert(RealizarJogada(a / 4 + 1, a % 4 + 1, b / 4 + 1, b % 4 + 1) == PAR_DIFERENTE);
++    assert(ObterJogadorAtual() == 1);
++    assert(OcultarErro() == 1);
++    assert(ObterJogadorAtual() == 2 && ObterJogadorDaUltimaJogada() == 1);
++    assert(RealizarJogada(0, 1, 1, 2) == JOGADA_INVALIDA);
++    assert(ObterJogadorAtual() == 2);
++    Embaralhar();
++    assert(ObterJogadorAtual() == 1 && ObterJogadorDaUltimaJogada() == 0);
++    puts("Integracao RF02 + RF03: acerto, erro, bloqueio e reinicio aprovados.");
++    return 0;
++}
+diff --git a/tests/test_interface_wasm.cjs b/tests/test_interface_wasm.cjs
+new file mode 100644
+index 0000000..7a7779a
+--- /dev/null
++++ b/tests/test_interface_wasm.cjs
+@@ -0,0 +1,130 @@
++const assert = require('node:assert/strict');
++const fs = require('node:fs');
++const path = require('node:path');
++const vm = require('node:vm');
++
++class Elemento {
++    constructor() {
++        this.children = [];
++        this.listeners = {};
++        this.disabled = false;
++        this.textContent = '';
++        this.classes = new Set();
++        this.classList = {toggle: (nome, ativo) => ativo ? this.classes.add(nome) : this.classes.delete(nome)};
++    }
++    set className(valor) {this.classes = new Set(valor.split(' '));}
++    set innerHTML(valor) {if (valor === '') this.children = [];}
++    appendChild(elemento) {this.children.push(elemento);}
++    addEventListener(nome, fn) {(this.listeners[nome] ||= []).push(fn);}
++    setAttribute() {}
++    click() {if (!this.disabled) for (const fn of this.listeners.click || []) fn();}
++}
++
++async function testar() {
++    const motor = require('../docs/projetoweb.js');
++    await new Promise((resolve, reject) => {
++        motor.onRuntimeInitialized = resolve;
++        motor.onAbort = reject;
++    });
++    const elementos = Object.fromEntries(['tabuleiro', 'mensagem', 'btnEmbaralhar', 'jogadorAtual', 'pontos1', 'pontos2', 'tentativas1', 'tentativas2', 'totalTentativas'].map(nome => [nome, new Elemento()]));
++    const eventos = [];
++    const timers = new Map();
++    let timer = 0;
++    const ambiente = vm.createContext({
++        document: {
++            getElementById: nome => elementos[nome],
++            createElement: () => new Elemento(),
++            querySelectorAll: () => elementos.tabuleiro.children,
++            dispatchEvent: evento => eventos.push(evento)
++        },
++        CustomEvent: class {constructor(type, dados) {this.type = type;this.detail = dados?.detail;}},
++        setTimeout: fn => {timers.set(++timer, fn);return timer;},
++        clearTimeout: id => timers.delete(id)
++    });
++    vm.runInContext(fs.readFileSync(path.join(__dirname, '../web/jogo.js'), 'utf8'), ambiente);
++    ambiente.Module.ccall = motor.ccall;
++    const api = (nome, ...args) => motor.ccall(nome, 'number', args.map(() => 'number'), args);
++    const concluidas = () => eventos.filter(e => e.type === 'rf02:jogadaConcluida');
++    const disparar = () => {const pendentes = [...timers.values()];timers.clear();pendentes.forEach(fn => fn());};
++    const clicar = posicao => elementos.tabuleiro.children[posicao].click();
++    const verificarVez = jogador => assert.equal(elementos.jogadorAtual.textContent, `Vez do jogador ${jogador}`);
++    const nomes = () => Array.from({length: 16}, (_, i) => motor.ccall('ReturnCart', 'string', ['number'], [i]));
++    ambiente.Module.onRuntimeInitialized();
++    verificarVez(1);
++    assert.equal(elementos.tabuleiro.children.length, 16);
++    assert(elementos.tabuleiro.children.every(c => c.textContent === '?' && !c.disabled));
++    const cartas = nomes();
++    const par = cartas.findIndex((nome, i) => i > 0 && nome === cartas[0]);
++    clicar(0);
++    clicar(0);
++    assert.equal(concluidas().length, 0);
++    verificarVez(1);
++    clicar(par);
++    assert.equal(concluidas().length, 1);
++    assert.equal(concluidas()[0].detail.resultado, 1);
++    assert.equal(concluidas()[0].detail.jogador, 1);
++    assert.equal(concluidas()[0].detail.proximoJogador, 1);
++    assert.equal(api('ObterPontos', 1), 1);
++    assert.equal(api('ObterTotalTentativas'), 1);
++    verificarVez(1);
++    const a = cartas.findIndex((_, i) => i !== 0 && i !== par);
++    const b = cartas.findIndex((nome, i) => i !== 0 && i !== par && i !== a && nome !== cartas[a]);
++    clicar(a);
++    clicar(b);
++    assert(elementos.tabuleiro.children.every(c => c.disabled));
++    verificarVez(1);
++    assert.equal(concluidas().length, 1);
++    elementos.tabuleiro.children.forEach(c => c.click());
++    disparar();
++    verificarVez(2);
++    assert.equal(concluidas().length, 2);
++    assert.equal(concluidas()[1].detail.resultado, 2);
++    assert.equal(concluidas()[1].detail.jogador, 1);
++    assert.equal(concluidas()[1].detail.proximoJogador, 2);
++    assert.equal(elementos.tabuleiro.children[a].textContent, '?');
++    assert.equal(api('OcultarErro'), 0);
++    assert.equal(api('ObterJogadorAtual'), 2);
++    assert.equal(api('ObterTentativas', 1), 2);
++    assert.equal(api('ObterPontos', 2), 0);
++    const par2 = cartas.findIndex((nome, i) => i !== a && nome === cartas[a]);
++    clicar(a);
++    clicar(par2);
++    verificarVez(2);
++    assert.equal(concluidas().at(-1).detail.jogador, 2);
++    const livres = cartas.map((_, i) => i).filter(i => api('EstadoDaCarta', i) === 0);
++    const c = livres[0];
++    const d = livres.find(i => cartas[i] !== cartas[c]);
++    clicar(c);
++    clicar(d);
++    const quantidadeAntes = concluidas().length;
++    elementos.btnEmbaralhar.click();
++    disparar();
++    verificarVez(1);
++    assert.equal(api('ObterJogadorDaUltimaJogada'), 0);
++    assert.equal(api('ObterTotalTentativas'), 0);
++    assert.equal(concluidas().length, quantidadeAntes);
++    assert(elementos.tabuleiro.children.every(carta => carta.textContent === '?' && !carta.disabled));
++    const final = nomes();
++    const usados = new Set();
++    for (let i = 0; i < 16; i++) {
++        if (usados.has(i)) continue;
++        const j = final.findIndex((nome, indice) => indice !== i && !usados.has(indice) && nome === final[i]);
++        clicar(i);
++        clicar(j);
++        usados.add(i);
++        usados.add(j);
++    }
++    assert(elementos.tabuleiro.children.every(carta => carta.classes.has('encontrada')));
++    assert.equal(elementos.jogadorAtual.textContent, 'Partida encerrada');
++    assert.equal(api('ObterVencedor'), 1);
++    assert.equal(api('ObterPontos', 1), 8);
++    assert.equal(api('ObterTotalTentativas'), 8);
++    assert.match(elementos.mensagem.textContent, /Jogador 1 venceu/);
++    const tentativasFinais = api('ObterTotalTentativas');
++    elementos.tabuleiro.children.forEach(carta => carta.click());
++    assert.equal(api('ObterTotalTentativas'), tentativasFinais);
++    console.log('WebAssembly real + interface JavaScript com DOM simulado: aprovado.');
++    console.log('Vez na tela, jogador nos eventos, erro com atraso, reinicio e oito pares: aprovados.');
++}
++
++testar().catch(erro => {console.error(erro);process.exitCode = 1;});
+diff --git a/tests/test_partida_completa.c b/tests/test_partida_completa.c
+new file mode 100644
+index 0000000..9e542f2
+--- /dev/null
++++ b/tests/test_partida_completa.c
+@@ -0,0 +1,117 @@
++#include <assert.h>
++#include <stdio.h>
++#include "../src/rf02.h"
++#include "../src/turnos.h"
++#include "../src/pontuacao.h"
++#include "../src/resultado.h"
++
++void Embaralhar(void);
++const char *ReturnCart(int posicao);
++int EscolherCarta(int posicao);
++int EstadoDaCarta(int posicao);
++int OcultarErro(void);
++
++static int iguais(const char *a, const char *b) {
++    while (*a && *a == *b) {
++        a++;
++        b++;
++    }
++    return *a == *b;
++}
++
++static void achar(int *a, int *b, int par) {
++    int i;
++    int j;
++    for (i = 0; i < 16; i++) {
++        for (j = i + 1; j < 16; j++) {
++            if (EstadoDaCarta(i) == CARTA_OCULTA && EstadoDaCarta(j) == CARTA_OCULTA &&
++                iguais(ReturnCart(i), ReturnCart(j)) == par) {
++                *a = i;
++                *b = j;
++                return;
++            }
++        }
++    }
++    assert(0);
++}
++
++static void acertar(void) {
++    int a;
++    int b;
++    achar(&a, &b, 1);
++    assert(EscolherCarta(a) == PRIMEIRA_CARTA);
++    assert(EscolherCarta(b) == PAR_ENCONTRADO);
++}
++
++static void errar(void) {
++    int a;
++    int b;
++    int anterior = ObterJogadorAtual();
++    int tentativas = ObterTotalTentativas();
++    achar(&a, &b, 0);
++    assert(EscolherCarta(a) == PRIMEIRA_CARTA);
++    assert(EscolherCarta(b) == PAR_DIFERENTE);
++    assert(ObterJogadorAtual() == anterior);
++    assert(ObterTotalTentativas() == tentativas);
++    assert(OcultarErro() == 1);
++    assert(ObterJogadorAtual() == 3 - anterior);
++    assert(ObterTotalTentativas() == tentativas + 1);
++    assert(OcultarErro() == 0);
++    assert(ObterTotalTentativas() == tentativas + 1);
++}
++
++int main(void) {
++    Placar p;
++    ResultadoPartida r = {0, 0, -2};
++    int i;
++    assert(ObterVencedor() == -2);
++    assert(EscolherCarta(0) == JOGADA_INVALIDA);
++    rf04_inicializar(&p);
++    assert(rf04_registrar(&p, 0, PAR_ENCONTRADO) == 0);
++    assert(rf04_registrar(&p, 3, PAR_ENCONTRADO) == 0);
++    assert(rf04_registrar(&p, 1, PRIMEIRA_CARTA) == 0);
++    assert(rf04_registrar(0, 1, PAR_ENCONTRADO) == 0);
++    assert(rf05_verificar(&r, &p) == -2);
++    rf05_inicializar(&r);
++    assert(rf05_verificar(&r, &p) == -1);
++    for (i = 0; i < 4; i++) {
++        assert(rf04_registrar(&p, 1, PAR_ENCONTRADO) == 1);
++        assert(rf04_registrar(&p, 2, PAR_ENCONTRADO) == 1);
++    }
++    assert(rf05_verificar(&r, &p) == 0 && r.encerrada);
++    assert(rf04_registrar(&p, 1, PAR_DIFERENTE) == 0);
++    Embaralhar();
++    assert(EscolherCarta(-1) == JOGADA_INVALIDA);
++    assert(ObterTotalTentativas() == 0);
++    for (i = 0; i < 8; i++) {
++        acertar();
++    }
++    assert(PartidaEncerrada() && ObterVencedor() == 1);
++    assert(ObterPontos(1) == 8 && ObterPontos(2) == 0);
++    assert(ObterTentativas(1) == 8 && ObterTentativas(2) == 0);
++    assert(EscolherCarta(0) == JOGADA_INVALIDA);
++    assert(ObterTotalTentativas() == 8);
++    Embaralhar();
++    assert(!PartidaEncerrada() && ObterVencedor() == -1);
++    assert(ObterPontos(1) == 0 && ObterTotalTentativas() == 0);
++    errar();
++    for (i = 0; i < 8; i++) {
++        acertar();
++    }
++    assert(ObterVencedor() == 2 && ObterPontos(2) == 8);
++    assert(ObterTentativas(1) == 1 && ObterTentativas(2) == 8);
++    assert(ObterTotalTentativas() == 9);
++    Embaralhar();
++    for (i = 0; i < 4; i++) {
++        acertar();
++    }
++    errar();
++    for (i = 0; i < 4; i++) {
++        acertar();
++    }
++    assert(PartidaEncerrada() && ObterVencedor() == 0);
++    assert(ObterPontos(1) == 4 && ObterPontos(2) == 4);
++    assert(ObterParesEncontrados() == 8 && ObterTotalTentativas() == 9);
++    puts("Partida completa: vitoria dos dois jogadores, empate, bloqueio, contagem unica e reinicio aprovados.");
++    return 0;
++}
+diff --git a/tests/test_rf02.c b/tests/test_rf02.c
+new file mode 100644
+index 0000000..358652a
+--- /dev/null
++++ b/tests/test_rf02.c
+@@ -0,0 +1,145 @@
++#include <assert.h>
++#include <stdio.h>
++#include <locale.h>
++#include "../src/rf02.h"
++
++static const char *nomes[RF02_TOTAL_CARTAS] = {
++    "Ana", "Carlos", "Beatriz", "Jair",
++    "Marcio", "Odete", "Claudia", "Mauricio",
++    "Ana", "Carlos", "Beatriz", "Jair",
++    "Marcio", "Odete", "Claudia", "Mauricio"
++};
++
++static int mesmo_estado(const JogoMemoria *a, const JogoMemoria *b) {
++    int i;
++
++    for (i = 0; i < RF02_TOTAL_CARTAS; i++) {
++        if (a->tabuleiro.cartas[i].simbolo != b->tabuleiro.cartas[i].simbolo ||
++            a->tabuleiro.cartas[i].estado != b->tabuleiro.cartas[i].estado) {
++            return 0;
++        }
++    }
++
++    return a->jogada.primeira == b->jogada.primeira &&
++           a->jogada.segunda == b->jogada.segunda &&
++           a->jogada.aguardando == b->jogada.aguardando;
++}
++
++int main(void) {
++    JogoMemoria jogo;
++    JogoMemoria anterior;
++    JogoMemoria outro;
++    const char *invalidos[RF02_TOTAL_CARTAS];
++    const char *separados[RF02_TOTAL_CARTAS];
++    char ana1[] = {'A', 'n', 'a', '\0'};
++    char ana2[] = {'A', 'n', 'a', '\0'};
++    int i;
++    int pares = 0;
++
++    setlocale(LC_ALL, "Portuguese");
++    assert(rf02_inicializar(&jogo, nomes) == 1);
++    assert(jogo.jogada.primeira == -1 && jogo.jogada.segunda == -1);
++    assert(!jogo.jogada.aguardando);
++    for (i = 0; i < RF02_TOTAL_CARTAS; i++) {
++        assert(jogo.tabuleiro.cartas[i].estado == CARTA_OCULTA);
++        assert(jogo.tabuleiro.cartas[i].simbolo == nomes[i]);
++        invalidos[i] = nomes[i];
++        separados[i] = nomes[i];
++    }
++    puts("01 inicializacao e 16 cartas ocultas: OK");
++
++    anterior = jogo;
++    invalidos[9] = 0;
++    assert(!rf02_inicializar(0, nomes));
++    assert(!rf02_inicializar(&jogo, 0));
++    assert(!rf02_inicializar(&jogo, invalidos));
++    assert(mesmo_estado(&jogo, &anterior));
++    assert(rf02_escolher_carta(0, 0) == JOGADA_INVALIDA);
++    assert(rf02_jogar_par(0, 1, 1, 3, 1) == JOGADA_INVALIDA);
++    assert(!rf02_ocultar_erro(0));
++    puts("02 entradas nulas e inicializacao atomica: OK");
++
++    assert(rf02_escolher_carta(&jogo, -1) == JOGADA_INVALIDA);
++    assert(rf02_escolher_carta(&jogo, 16) == JOGADA_INVALIDA);
++    assert(mesmo_estado(&jogo, &anterior));
++    assert(rf02_jogar_par(&jogo, 0, 1, 3, 1) == JOGADA_INVALIDA);
++    assert(rf02_jogar_par(&jogo, 1, 5, 3, 1) == JOGADA_INVALIDA);
++    assert(rf02_jogar_par(&jogo, 1, 1, 5, 1) == JOGADA_INVALIDA);
++    assert(rf02_jogar_par(&jogo, 1, 1, 3, 0) == JOGADA_INVALIDA);
++    assert(rf02_jogar_par(&jogo, 1, 1, 1, 1) == JOGADA_INVALIDA);
++    assert(mesmo_estado(&jogo, &anterior));
++    puts("03 limites e mesma posicao sem alterar estado: OK");
++
++    assert(rf02_escolher_carta(&jogo, 0) == PRIMEIRA_CARTA);
++    assert(jogo.tabuleiro.cartas[0].estado == CARTA_VISIVEL);
++    anterior = jogo;
++    assert(rf02_escolher_carta(&jogo, 0) == JOGADA_INVALIDA);
++    assert(rf02_jogar_par(&jogo, 1, 2, 3, 2) == JOGADA_INVALIDA);
++    assert(mesmo_estado(&jogo, &anterior));
++    assert(!rf02_ocultar_erro(&jogo));
++    assert(rf02_escolher_carta(&jogo, 8) == PAR_ENCONTRADO);
++    assert(jogo.tabuleiro.cartas[0].estado == CARTA_ENCONTRADA);
++    assert(jogo.tabuleiro.cartas[8].estado == CARTA_ENCONTRADA);
++    assert(jogo.jogada.primeira == -1 && !jogo.jogada.aguardando);
++    puts("04 primeira selecao, repeticao e acerto: OK");
++
++    anterior = jogo;
++    assert(rf02_escolher_carta(&jogo, 0) == JOGADA_INVALIDA);
++    assert(rf02_jogar_par(&jogo, 1, 2, 3, 1) == JOGADA_INVALIDA);
++    assert(mesmo_estado(&jogo, &anterior));
++    puts("05 pares ja encontrados e segunda posicao indisponivel: OK");
++
++    assert(rf02_escolher_carta(&jogo, 1) == PRIMEIRA_CARTA);
++    assert(rf02_escolher_carta(&jogo, 2) == PAR_DIFERENTE);
++    assert(jogo.jogada.aguardando);
++    assert(jogo.tabuleiro.cartas[1].estado == CARTA_VISIVEL);
++    assert(jogo.tabuleiro.cartas[2].estado == CARTA_VISIVEL);
++    anterior = jogo;
++    assert(rf02_escolher_carta(&jogo, 3) == AGUARDANDO_LIBERACAO);
++    assert(rf02_jogar_par(&jogo, 2, 1, 4, 1) == AGUARDANDO_LIBERACAO);
++    assert(mesmo_estado(&jogo, &anterior));
++    assert(rf02_ocultar_erro(&jogo));
++    assert(jogo.tabuleiro.cartas[1].estado == CARTA_OCULTA);
++    assert(jogo.tabuleiro.cartas[2].estado == CARTA_OCULTA);
++    assert(jogo.tabuleiro.cartas[0].estado == CARTA_ENCONTRADA);
++    assert(jogo.jogada.primeira == -1 && jogo.jogada.segunda == -1);
++    assert(!rf02_ocultar_erro(&jogo));
++    puts("06 erro, terceira selecao bloqueada e ocultacao: OK");
++
++    assert(rf02_jogar_par(&jogo, 1, 2, 3, 2) == PAR_ENCONTRADO);
++    assert(rf02_jogar_par(&jogo, 1, 3, 3, 4) == PAR_DIFERENTE);
++    assert(rf02_inicializar(&jogo, nomes));
++    assert(jogo.jogada.primeira == -1 && !jogo.jogada.aguardando);
++    for (i = 0; i < RF02_TOTAL_CARTAS; i++) {
++        assert(jogo.tabuleiro.cartas[i].estado == CARTA_OCULTA);
++    }
++    puts("07 coordenadas humanas de 1 a 4 e reinicio durante erro: OK");
++
++    separados[0] = ana1;
++    separados[8] = ana2;
++    assert(rf02_inicializar(&jogo, separados));
++    assert(rf02_escolher_carta(&jogo, 0) == PRIMEIRA_CARTA);
++    assert(rf02_escolher_carta(&jogo, 8) == PAR_ENCONTRADO);
++    puts("08 comparacao por conteudo com enderecos diferentes: OK");
++
++    assert(rf02_inicializar(&jogo, nomes));
++    assert(rf02_inicializar(&outro, nomes));
++    assert(rf02_escolher_carta(&jogo, 0) == PRIMEIRA_CARTA);
++    assert(outro.jogada.primeira == -1);
++    assert(outro.tabuleiro.cartas[0].estado == CARTA_OCULTA);
++    puts("09 duas instancias independentes: OK");
++
++    assert(rf02_inicializar(&jogo, nomes));
++    for (i = 0; i < 8; i++) {
++        assert(rf02_escolher_carta(&jogo, i) == PRIMEIRA_CARTA);
++        assert(rf02_escolher_carta(&jogo, i + 8) == PAR_ENCONTRADO);
++        pares++;
++    }
++    assert(pares == 8);
++    for (i = 0; i < RF02_TOTAL_CARTAS; i++) {
++        assert(jogo.tabuleiro.cartas[i].estado == CARTA_ENCONTRADA);
++        assert(rf02_escolher_carta(&jogo, i) == JOGADA_INVALIDA);
++    }
++    puts("10 todos os oito pares permanecem visiveis: OK");
++    return 0;
++}
+diff --git a/tests/test_turnos.c b/tests/test_turnos.c
+new file mode 100644
+index 0000000..fe6a542
+--- /dev/null
++++ b/tests/test_turnos.c
+@@ -0,0 +1,47 @@
++#include <assert.h>
++#include <stdio.h>
++#include "../src/turnos.h"
++#include "../src/rf02.h"
++
++int main(void) {
++    ControleTurnos a;
++    ControleTurnos b;
++    ControleTurnos invalido = {3, 0};
++
++    rf03_inicializar(&a);
++    rf03_inicializar(&b);
++    assert(rf03_obter_jogador(&a) == 1);
++    assert(rf03_obter_ultimo_jogador(&a) == 0);
++    assert(rf03_processar_resultado(&a, PRIMEIRA_CARTA) == 1);
++    assert(rf03_processar_resultado(&a, JOGADA_INVALIDA) == 1);
++    assert(rf03_processar_resultado(&a, AGUARDANDO_LIBERACAO) == 1);
++    assert(a.ultimoJogador == 0);
++    assert(rf03_processar_resultado(&a, PAR_ENCONTRADO) == 1);
++    assert(a.ultimoJogador == 1);
++    assert(rf03_processar_resultado(&a, PAR_DIFERENTE) == 2);
++    assert(a.ultimoJogador == 1);
++    assert(rf03_processar_resultado(&a, PAR_ENCONTRADO) == 2);
++    assert(a.ultimoJogador == 2);
++    assert(rf03_processar_resultado(&a, PAR_DIFERENTE) == 1);
++    assert(a.ultimoJogador == 2);
++    assert(rf03_obter_jogador(&b) == 1);
++    assert(rf03_obter_ultimo_jogador(&b) == 0);
++    assert(rf03_processar_resultado(&a, 99) == 0);
++    assert(a.jogadorAtual == 1 && a.ultimoJogador == 2);
++    rf03_inicializar(&a);
++    assert(a.jogadorAtual == 1 && a.ultimoJogador == 0);
++    rf03_inicializar(0);
++    assert(rf03_obter_jogador(0) == 0);
++    assert(rf03_obter_ultimo_jogador(0) == 0);
++    assert(rf03_processar_resultado(0, PAR_DIFERENTE) == 0);
++    assert(rf03_processar_resultado(&invalido, PAR_DIFERENTE) == 0);
++    assert(invalido.jogadorAtual == 3);
++    IniciarTurnos();
++    assert(ObterJogadorAtual() == 1);
++    assert(ProcessarResultadoJogada(PAR_DIFERENTE) == 2);
++    assert(ObterJogadorDaUltimaJogada() == 1);
++    IniciarTurnos();
++    assert(ObterJogadorAtual() == 1 && ObterJogadorDaUltimaJogada() == 0);
++    puts("RF03: regras de turno, reinicio e validacoes aprovados.");
++    return 0;
++}
+diff --git a/web/jogo.js b/web/jogo.js
+index f7c4944..3be6e39 100644
+--- a/web/jogo.js
++++ b/web/jogo.js
+@@ -1,28 +1,130 @@
+-function criarTabuleiro() {
+-    Module.ccall("Embaralhar", null, [], []);
+-    const tabuleiro = document.getElementById("tabuleiro");
+-    tabuleiro.innerHTML = "";
+-
+-    for (let i = 0; i < 16; i++) {
+-        const carta = document.createElement("div");
+-        carta.className = "carta";
+-        const nome = Module.ccall("ReturnCart", "string", ["number"], [i]);
+-        carta.dataset.nome = nome;
+-        carta.textContent = "?";
+-        carta.addEventListener("click", () => {
+-            carta.textContent = carta.dataset.nome;
+-        });
+-        tabuleiro.appendChild(carta);
+-    }
+-}
+-
+-var Module = {
+-    onRuntimeInitialized: () => {
+-        criarTabuleiro();        
+-    }
+-};
+-
+-const embaralhar = document.getElementById("btnEmbaralhar");
+-embaralhar.addEventListener("click", () => {
+-    criarTabuleiro();
+-});
+\ No newline at end of file
++const RF02 = Object.freeze({
++    INVALIDA: -1,
++    PRIMEIRA: 0,
++    ACERTO: 1,
++    ERRO: 2,
++    BLOQUEADA: 3
++});
++
++let temporizadorErro = null;
++let motorPronto = false;
++
++function chamarC(nome, argumentos = []) {
++    return Module.ccall(nome, "number", argumentos.map(() => "number"), argumentos);
++}
++
++function informar(texto) {
++    document.getElementById("mensagem").textContent = texto;
++}
++
++function atualizarTabuleiro() {
++    const bloqueado = chamarC("JogadaBloqueada") === 1;
++    const encerrada = chamarC("PartidaEncerrada") === 1;
++    document.getElementById("jogadorAtual").textContent = encerrada ?
++        "Partida encerrada" : `Vez do jogador ${chamarC("ObterJogadorAtual")}`;
++    for (let jogador = 1; jogador <= 2; jogador++) {
++        document.getElementById(`pontos${jogador}`).textContent = chamarC("ObterPontos", [jogador]);
++        document.getElementById(`tentativas${jogador}`).textContent = chamarC("ObterTentativas", [jogador]);
++    }
++    document.getElementById("totalTentativas").textContent = chamarC("ObterTotalTentativas");
++    document.querySelectorAll("#tabuleiro .carta").forEach((carta, posicao) => {
++        const estado = chamarC("EstadoDaCarta", [posicao]);
++        const simbolo = estado === 0 ? "?" :
++            Module.ccall("ReturnCart", "string", ["number"], [posicao]);
++        carta.textContent = simbolo;
++        carta.disabled = encerrada || bloqueado || estado !== 0;
++        carta.classList.toggle("encontrada", estado === 2);
++        carta.classList.toggle("visivel", estado === 1);
++        carta.setAttribute("aria-label", estado === 0 ?
++            `Carta oculta na linha ${Math.floor(posicao / 4) + 1}, coluna ${posicao % 4 + 1}` :
++            `${simbolo}${estado === 2 ? ", par encontrado" : ""}`);
++    });
++}
++
++function informarResultadoFinal() {
++    const vencedor = chamarC("ObterVencedor");
++    informar(vencedor === 0 ? "Empate! Cada jogador encontrou 4 pares." :
++        `Jogador ${vencedor} venceu com ${chamarC("ObterPontos", [vencedor])} pares!`);
++}
++
++function avisarJogada(resultado, primeira, segunda) {
++    document.dispatchEvent(new CustomEvent("rf02:jogadaConcluida", {
++        detail: {
++            resultado,
++            primeira,
++            segunda,
++            jogador: chamarC("ObterJogadorDaUltimaJogada"),
++            proximoJogador: chamarC("ObterJogadorAtual")
++        }
++    }));
++}
++
++function escolherCarta(posicao) {
++    if (!motorPronto) {
++        return;
++    }
++
++    const primeira = chamarC("ObterPrimeiraCarta");
++    const resultado = chamarC("EscolherCarta", [posicao]);
++    atualizarTabuleiro();
++
++    if (resultado === RF02.PRIMEIRA) {
++        informar("Escolha a segunda carta.");
++    } else if (resultado === RF02.ACERTO) {
++        if (chamarC("PartidaEncerrada")) {
++            informarResultadoFinal();
++        } else {
++            informar("Par encontrado. Escolha outra carta.");
++        }
++        avisarJogada(resultado, primeira, posicao);
++    } else if (resultado === RF02.ERRO) {
++        informar("As cartas são diferentes. Aguarde para tentar novamente.");
++        temporizadorErro = setTimeout(() => {
++            temporizadorErro = null;
++            chamarC("OcultarErro");
++            atualizarTabuleiro();
++            informar("Cartas ocultadas. Escolha uma carta.");
++            avisarJogada(resultado, primeira, posicao);
++        }, 1200);
++    } else if (resultado === RF02.INVALIDA) {
++        informar("Selecione uma carta oculta diferente da primeira.");
++    }
++}
++
++function criarTabuleiro() {
++    if (!motorPronto) {
++        return;
++    }
++
++    if (temporizadorErro !== null) {
++        clearTimeout(temporizadorErro);
++        temporizadorErro = null;
++    }
++
++    Module.ccall("Embaralhar", null, [], []);
++    const tabuleiro = document.getElementById("tabuleiro");
++    tabuleiro.innerHTML = "";
++
++    for (let i = 0; i < 16; i++) {
++        const carta = document.createElement("button");
++        carta.type = "button";
++        carta.className = "carta";
++        carta.addEventListener("click", () => escolherCarta(i));
++        tabuleiro.appendChild(carta);
++    }
++
++    atualizarTabuleiro();
++    informar("Escolha duas cartas para procurar um par.");
++    document.dispatchEvent(new CustomEvent("rf02:reinicio"));
++}
++
++var Module = {
++    onRuntimeInitialized: () => {
++        motorPronto = true;
++        document.getElementById("btnEmbaralhar").disabled = false;
++        criarTabuleiro();
++    },
++    onAbort: () => informar("Não foi possível carregar o jogo. Confira a compilação e o servidor local.")
++};
++
++document.getElementById("btnEmbaralhar").addEventListener("click", criarTabuleiro);
+diff --git a/web/shell.html b/web/shell.html
+index f5402d3..c86a180 100644
+--- a/web/shell.html
++++ b/web/shell.html
+@@ -1,184 +1,49 @@
+-<!doctype html>
+-<html lang="en-us">
+-  <head>
+-    <meta charset="utf-8">
+-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+-    <title>Emscripten-Generated Code</title>
+-    <style>body {
+-  font-family: arial;
+-  margin: 0;
+-  padding: none;
+-}
+-
+-.emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
+-div.emscripten { text-align: center; }
+-div.emscripten_border { border: 1px solid black; }
+-/* the canvas *must not* have any border or padding, or mouse coords will be wrong */
+-canvas.emscripten { border: 0px none; background-color: black; }
+-
+-#emscripten_logo {
+-  display: inline-block;
+-  margin: 0;
+-  padding: 6px;
+-  width: 265px;
+-}
+-
+-.spinner {
+-  height: 30px;
+-  width: 30px;
+-  margin: 0;
+-  margin-top: 20px;
+-  margin-left: 20px;
+-  display: inline-block;
+-  vertical-align: top;
+-
+-  -webkit-animation: rotation .8s linear infinite;
+-  -moz-animation: rotation .8s linear infinite;
+-  -o-animation: rotation .8s linear infinite;
+-  animation: rotation 0.8s linear infinite;
+-
+-  border-left: 5px solid rgb(235, 235, 235);
+-  border-right: 5px solid rgb(235, 235, 235);
+-  border-bottom: 5px solid rgb(235, 235, 235);
+-  border-top: 5px solid rgb(120, 120, 120);
+-
+-  border-radius: 100%;
+-  background-color: rgb(189, 215, 46);
+-}
+-
+-@-webkit-keyframes rotation {
+-  from {-webkit-transform: rotate(0deg);}
+-  to {-webkit-transform: rotate(360deg);}
+-}
+-@-moz-keyframes rotation {
+-  from {-moz-transform: rotate(0deg);}
+-  to {-moz-transform: rotate(360deg);}
+-}
+-@-o-keyframes rotation {
+-  from {-o-transform: rotate(0deg);}
+-  to {-o-transform: rotate(360deg);}
+-}
+-@keyframes rotation {
+-  from {transform: rotate(0deg);}
+-  to {transform: rotate(360deg);}
+-}
+-
+-#status {
+-  display: inline-block;
+-  vertical-align: top;
+-  margin-top: 30px;
+-  margin-left: 20px;
+-  font-weight: bold;
+-  color: rgb(120, 120, 120);
+-}
+-
+-#progress {
+-  height: 20px;
+-  width: 300px;
+-}
+-
+-#controls {
+-  display: inline-block;
+-  float: right;
+-  vertical-align: top;
+-  margin-top: 30px;
+-  margin-right: 20px;
+-}
+-
+-#output {
+-  width: 100%;
+-  height: 200px;
+-  margin: 0 auto;
+-  margin-top: 10px;
+-  border-left: 0px;
+-  border-right: 0px;
+-  padding-left: 0px;
+-  padding-right: 0px;
+-  display: block;
+-  background-color: black;
+-  color: white;
+-  font-family: 'Lucida Console', Monaco, monospace;
+-  outline: none;
+-}
+-
+-#tabuleiro {
+-    display: grid;
+-    grid-template-columns: repeat(4, 1fr);
+-    grid-template-rows: repeat(4, 1fr);
+-    gap: 10px;
+-}
+-
+-.emscripten_border {
+-    display: none;
+-}
+-
+-#output {
+-    display: none;
+-}
+-
+-.spinner {
+-    display: none;
+-}
+-
+-#status {
+-    display: none;
+-}
+-
+-.carta {
+-    width: 100px;
+-    height: 100px;
+-    background-color: #4a90d9;
+-    border: 2px solid #2c3e50;
+-    border-radius: 8px;
+-    display: flex;
+-    align-items: center;
+-    justify-content: center;
+-    font-size: 18px;
+-    color: white;
+-    cursor: pointer;
+-    user-select: none;
+-}
+-
+-#btnEmbaralhar {
+-    display: block;
+-    margin: 20px;
+-    padding: 10px 20px;
+-    font-size: 16px;
+-    cursor: pointer;
+-}
+-
+-</style>
+-  </head>
+-  <body>
+-    <a href="http://emscripten.org"><img id="emscripten_logo" src="data:image/png;base64,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"></a>
+-
+-    <div class="spinner" id='spinner'></div>
+-    <div class="emscripten" id="status">Downloading...</div>
+-
+-    <span id='controls'>
+-      <span><input type="checkbox" id="resize">Resize canvas</span>
+-      <span><input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer &nbsp;&nbsp;&nbsp;</span>
+-      <span><input type="button" value="Fullscreen" onclick="Module.requestFullscreen(document.getElementById('pointerLock').checked,
+-                                                                                document.getElementById('resize').checked)">
+-      </span>
+-    </span>
+-
+-    <div class="emscripten">
+-      <progress value="0" max="100" id="progress" hidden=1></progress>
+-    </div>
+-
+-    <div class="emscripten_border">
+-      <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex=-1></canvas>
+-    </div>
+-
+-    <button id="btnEmbaralhar">Embaralhar</button>
+-    
+-    <div id="tabuleiro"></div>
+-    
+-    <textarea id="output" rows="8"></textarea>
+-
+-    <script src="jogo.js"></script>
+-    {{{ SCRIPT }}}
+-    
+-  </body>
+-</html>
++<!doctype html>
++<html lang="pt-BR">
++<head>
++    <meta charset="utf-8">
++    <meta name="viewport" content="width=device-width, initial-scale=1">
++    <title>Jogo da memória</title>
++    <style>
++        * { box-sizing: border-box; }
++        body { margin: 0; font-family: Arial, sans-serif; color: #202020; background: #f5f5f3; }
++        main { max-width: 620px; margin: 36px auto; padding: 0 20px; }
++        h1 { font-size: 30px; margin-bottom: 8px; }
++        p { font-size: 18px; line-height: 1.5; }
++        #mensagem { min-height: 54px; }
++        #jogadorAtual { font-size: 22px; font-weight: bold; }
++        #placar { width: 100%; border-collapse: collapse; font-size: 18px; margin-top: 18px; }
++        #placar th, #placar td { padding: 8px; text-align: left; border-bottom: 1px solid #999; }
++        #tabuleiro { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px 0; }
++        .carta { min-width: 0; min-height: 92px; padding: 8px 3px; border: 2px solid #3d3d3d; border-radius: 8px; background: white; font: bold 18px Arial, sans-serif; color: #202020; cursor: pointer; overflow-wrap: anywhere; }
++        .carta.visivel { background: #f5e9c7; }
++        .carta.encontrada { background: #dcebdc; border-color: #32643c; }
++        .carta:disabled { color: #202020; cursor: default; opacity: 1; }
++        button:focus-visible { outline: 3px solid #803f10; outline-offset: 3px; }
++        #btnEmbaralhar { padding: 12px 18px; border: 2px solid #333; border-radius: 6px; background: white; color: #202020; font-size: 18px; cursor: pointer; }
++        #btnEmbaralhar:disabled { cursor: wait; }
++        @media (max-width: 420px) { .carta { min-height: 74px; font-size: 15px; } }
++    </style>
++</head>
++<body>
++    <main>
++        <h1>Jogo da memória</h1>
++        <p>Encontre os pares de nomes.</p>
++        <button id="btnEmbaralhar" type="button" disabled>Nova partida</button>
++        <p id="jogadorAtual" aria-live="polite">Vez do jogador 1</p>
++        <table id="placar" aria-label="Pontuação e tentativas dos jogadores">
++            <thead><tr><th>Jogador</th><th>Pares</th><th>Tentativas</th></tr></thead>
++            <tbody>
++                <tr><th scope="row">Jogador 1</th><td id="pontos1">0</td><td id="tentativas1">0</td></tr>
++                <tr><th scope="row">Jogador 2</th><td id="pontos2">0</td><td id="tentativas2">0</td></tr>
++            </tbody>
++        </table>
++        <p>Total de tentativas: <span id="totalTentativas">0</span></p>
++        <p id="mensagem" role="status" aria-live="polite">Carregando o jogo...</p>
++        <div id="tabuleiro" aria-label="Tabuleiro de quatro linhas e quatro colunas"></div>
++        <noscript>Ative o JavaScript para executar o jogo.</noscript>
++    </main>
++    <script src="jogo.js"></script>
++    {{{ SCRIPT }}}
++</body>
++</html>
