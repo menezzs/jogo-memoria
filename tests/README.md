@@ -1,58 +1,35 @@
-# Testes do jogo
+# Testes de integração
 
-## Teste inicial realizado
+Os testes verificam a integração dos cinco requisitos funcionais:
 
-A versão compilada foi executada localmente no navegador.
+- RF01: inicialização e embaralhamento do tabuleiro.
+- RF02: processamento das jogadas e validação dos pares.
+- RF03: controle dos turnos dos dois jogadores.
+- RF04: cálculo da pontuação e contagem de tentativas.
+- RF05: encerramento da partida e identificação do vencedor ou empate.
 
-Foi verificado:
-- Exibição das 16 cartas.
-- Revelação do nome ao clicar.
-- Funcionamento do botão Embaralhar.
+Também são verificadas jogadas inválidas, reinicialização da
+partida e bloqueio de novas jogadas após o encerramento.
 
-## Testes de integração planejados
+## Como executar
 
-- Confirmar que um par correto é registrado.
-- Confirmar a atualização de pontos e tentativas.
-- Verificar o encerramento após encontrar os 8 pares.
-- Conferir o resultado final.
-- Impedir novas jogadas após o encerramento.
-- Verificar se reiniciar limpa os dados da partida.
+Com o ambiente do Emscripten ativado, execute na pasta do projeto:
 
-Esses testes serão implementados após a integração
-dos módulos do grupo.
+    testar.bat
 
-## Testes do módulo de resultado — 15/10/2026
+Depois, inicie um servidor HTTP local:
 
-Os testes isolados de resultado.c foram executados com
-Emscripten no navegador e passaram.
+    python -m http.server 8000
 
-Cenários verificados:
-- Partida em andamento.
-- Vitória do jogador 1.
-- Vitória do jogador 2.
-- Empate.
-- Nenhum par encontrado.
-- Todos os pares encontrados pelo mesmo jogador.
-- Dados inválidos.
+Abra no navegador:
 
-Resultado: todas as verificações executadas passaram.
+http://localhost:8000/tests/teste_integracao.html
 
-Os testes de integração com os demais módulos permanecem pendentes.
+## Resultado verificado
 
-## Integração RF02, RF03 e RF05 — 15/10/2026
+A execução no navegador apresentou a mensagem:
 
-Teste compilado com Emscripten e executado no navegador.
+“RF01 + RF02 + RF03 + RF04 + RF05: todos os testes passaram.”
 
-Resultado: todas as verificações executadas passaram.
-
-Foram verificados:
-- Validação de cartas e pares.
-- Manutenção da vez no acerto e troca no erro.
-- Encerramento após os 8 pares.
-- Vitória dos dois jogadores e empate.
-- Bloqueio de seleções após o encerramento.
-- Reinicialização da partida.
-
-O RF04 ainda não participou do teste.
-Os totais de pares foram atualizados pelo código de teste.
-A interface do jogo ainda precisa ser conectada aos módulos.
+Esses testes validam a lógica em C compilada para WebAssembly.
+A integração completa da interface visual é uma etapa separada.
