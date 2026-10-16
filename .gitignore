@@ -59,3 +59,11 @@ dkms.conf
 
 # Instalacao local do Emscripten
 emsdk/
+
+# Arquivos gerados pela compilacao dos testes
+/tests/teste_integracao.html
+/tests/teste_integracao.js
+/tests/teste_integracao.wasm
+/tests/teste_resultado.html
+/tests/teste_resultado.js
+/tests/teste_resultado.wasm
