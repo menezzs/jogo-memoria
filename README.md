@@ -94,5 +94,7 @@ O resultado esperado é:
 
 ## Documentação
 
-- [Relatório, slides, diagramas e planejamento](documentos/README.md)
+- [Relatório do projeto](<Relatório Jogo da Memória.pdf>)
+- [Slides editáveis](apresentacao/Apresentacao_Completa.pptx.pptx)
+- [Diagrama de classes e estruturas em C](diagramas/Diagrama_Classes.jpg)
 - [Testes de integração](tests/README.md)
