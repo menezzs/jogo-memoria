@@ -67,8 +67,6 @@ int apurarVencedor(int paresJogador1, int paresJogador2)
     return RESULTADO_EMPATE;
 }
 
-/* O RF02 deve inicializar o jogo com 16 cartas formando 8 pares.
-   O ponteiro deve apontar para uma estrutura inicializada. */
 static int contar_cartas_encontradas(const JogoMemoria *jogo)
 {
     if (jogo == 0) {
@@ -88,8 +86,6 @@ static int contar_cartas_encontradas(const JogoMemoria *jogo)
             encontradas++;
         }
     }
-
-    /* O RF02 sempre marca as duas cartas de um par juntas. */
     return encontradas % 2 == 0 ? encontradas : -1;
 }
 
@@ -114,7 +110,6 @@ int rf05_apurar_vencedor(const JogoMemoria *jogo,
         return RESULTADO_INVALIDO;
     }
 
-    /* Os totais devem vir do RF04 depois de contabilizar a jogada. */
     if (paresJogador1 + paresJogador2 != encontradas / 2) {
         return RESULTADO_INVALIDO;
     }
