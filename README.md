@@ -47,11 +47,10 @@ entre os integrantes.
 ## Estado atual
 
 Os cinco requisitos funcionais estão implementados em C e
-passaram nos testes de integração executados no navegador
-com WebAssembly.
-
-A interface visual é um protótipo. Sua integração completa
-com jogadas, turnos, pontuação e resultado ainda está pendente.
+passaram nos testes de integração. A interface web está conectada
+às funções exportadas pelo WebAssembly e permite jogar uma partida
+completa entre duas pessoas, acompanhar turnos, pontos e tentativas,
+reiniciar o jogo e visualizar o resultado final.
 
 ## Ferramentas necessárias
 
@@ -77,6 +76,14 @@ Para abrir o protótipo localmente, execute:
 Acesse:
 
 http://localhost:8000/docs/
+
+## Interface web
+
+A interface apresenta o tabuleiro 4 × 4, o jogador da vez, o placar
+individual, as tentativas e os pares encontrados. Ao errar, as cartas
+permanecem visíveis por um breve intervalo e depois são ocultadas;
+ao acertar, o jogador mantém a vez. O encerramento mostra vitória ou
+empate. A lógica das regras permanece nos módulos C/WebAssembly.
 
 ## Executar os testes
 
